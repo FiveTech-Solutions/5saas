@@ -1,0 +1,91 @@
+.nfse-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.nfse-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.nfse-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.nfse-number {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  color: #1f2937;
+}
+
+.nfse-date {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.nfse-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-error {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.nfse-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.nfse-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nfse-info label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.nfse-info span {
+  font-size: 0.875rem;
+  color: #1f2937;
+}
+
+.nfse-value {
+  font-weight: 600;
+  font-size: 1rem !important;
+  color: #667eea !important;
+}
