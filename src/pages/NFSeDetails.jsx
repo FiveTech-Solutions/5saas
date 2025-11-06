@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   getNFSe,
   getNFSePDF,
@@ -13,6 +14,7 @@ import './NFSeDetails.css';
 const NFSeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { profile } = useAuth(); // <-- Get user profile
   const [nfse, setNfse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -300,7 +302,7 @@ const NFSeDetails = () => {
           >
             ✉️ Enviar por Email
           </button>
-          {!isCancelled && (
+          {profile?.role === 'admin' && !isCancelled && (
             <button
               className="btn-action btn-danger"
               onClick={() => setShowCancelModal(true)}

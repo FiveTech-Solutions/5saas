@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NFSeCard from '../components/NFSeCard';
-import { listNFSe } from '../services/nfseService';
+import { listNfses } from '../services/nfseSupabaseService'; // Updated import
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
 import './Home.css';
 
 const Home = () => {
@@ -9,29 +10,23 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { user } = useAuth(); // Get user from auth context
 
   useEffect(() => {
-    loadNFSe();
-  }, []);
+    if (user) {
+      loadNFSe();
+    }
+  }, [user]);
 
   const loadNFSe = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await listNFSe();
-      // Handle different response structures
-      if (Array.isArray(data)) {
-        setNfseList(data);
-      } else if (data.items && Array.isArray(data.items)) {
-        setNfseList(data.items);
-      } else if (data.data && Array.isArray(data.data)) {
-        setNfseList(data.data);
-      } else {
-        setNfseList([]);
-      }
+      const data = await listNfses(); // Use the new service function
+      setNfseList(data || []);
     } catch (err) {
-      console.error('Error loading NFS-e:', err);
-      setError('Erro ao carregar NFS-e. Verifique suas configurações de API.');
+      console.error('Error loading NFS-e from Supabase:', err);
+      setError('Erro ao carregar suas NFS-e do banco de dados.');
       setNfseList([]);
     } finally {
       setLoading(false);
@@ -75,8 +70,8 @@ const Home = () => {
 
       {!loading && !error && nfseList.length > 0 && (
         <div className="nfse-grid">
-          {nfseList.map((nfse, index) => (
-            <NFSeCard key={nfse.id || index} nfse={nfse} />
+          {nfseList.map((nfseItem) => (
+            <NFSeCard key={nfseItem.id} nfse={nfseItem.nfse_data} />
           ))}
         </div>
       )}
