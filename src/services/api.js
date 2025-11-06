@@ -11,6 +11,9 @@ const api = axios.create({
 });
 
 // Add request interceptor to include API key if available
+// Note: In a production environment, API keys should be handled server-side
+// to avoid exposing them in the client. For this client-only demo, we use
+// localStorage with the understanding that users should protect their API keys.
 api.interceptors.request.use(
   (config) => {
     const apiKey = localStorage.getItem('technospeed_api_key');

@@ -47,6 +47,11 @@ const Settings = () => {
               Configure sua chave de API para integração com o PlugNotas (Technospeed).
               A chave será armazenada localmente no seu navegador.
             </p>
+            <p className="section-description" style={{ fontSize: '0.85rem', color: '#dc2626' }}>
+              <strong>⚠️ Nota de Segurança:</strong> Para ambientes de produção, recomenda-se implementar
+              um backend que gerencie as chaves de API de forma segura. Esta implementação é adequada
+              para desenvolvimento e testes.
+            </p>
 
             <div className="form-group">
               <label>Chave de API (x-api-key)</label>
