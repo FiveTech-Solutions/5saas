@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createNFSe as createNFSeExternal } from '../services/nfseService';
 import { createNfse as createNfseSupabase } from '../services/nfseSupabaseService';
@@ -14,6 +14,50 @@ const NewNFSe = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(null); // For API lookups
+
+  // New state structure based on the provided payload
+  const [formData, setFormData] = useState({
+    idIntegracao: generateIdIntegracao(),
+    prestador: {
+      cpfCnpj: '08187168000160', // Pre-filled for demo
+    },
+    tomador: {
+      cpfCnpj: '',
+      razaoSocial: '',
+      inscricaoMunicipal: '',
+      email: '',
+      endereco: {
+        descricaoCidade: '',
+        cep: '',
+        tipoLogradouro: '',
+        logradouro: '',
+        tipoBairro: '',
+        codigoCidade: '',
+        complemento: '',
+        estado: '',
+        numero: '',
+        bairro: '',
+      },
+    },
+    servico: [
+      {
+        codigo: '14.10', // Same as codigoTributacao for simplicity
+        codigoTributacao: '14.10',
+        discriminacao: '',
+        cnae: '7490104',
+        iss: {
+          tipoTributacao: 7,
+          exigibilidade: 1,
+          aliquota: 3,
+        },
+        valor: {
+          servico: 0,
+          descontoCondicionado: 0,
+          descontoIncondicionado: 0,
+        },
+      },
+    ],
+  });
 
   // Effect for CNPJ lookup
   useEffect(() => {
@@ -81,50 +125,6 @@ const NewNFSe = () => {
       fetchCepData();
     }
   }, [formData.tomador.endereco.cep]);
-
-  // New state structure based on the provided payload
-  const [formData, setFormData] = useState({
-    idIntegracao: generateIdIntegracao(),
-    prestador: {
-      cpfCnpj: '08187168000160', // Pre-filled for demo
-    },
-    tomador: {
-      cpfCnpj: '',
-      razaoSocial: '',
-      inscricaoMunicipal: '',
-      email: '',
-      endereco: {
-        descricaoCidade: '',
-        cep: '',
-        tipoLogradouro: '',
-        logradouro: '',
-        tipoBairro: '',
-        codigoCidade: '',
-        complemento: '',
-        estado: '',
-        numero: '',
-        bairro: '',
-      },
-    },
-    servico: [
-      {
-        codigo: '14.10', // Same as codigoTributacao for simplicity
-        codigoTributacao: '14.10',
-        discriminacao: '',
-        cnae: '7490104',
-        iss: {
-          tipoTributacao: 7,
-          exigibilidade: 1,
-          aliquota: 3,
-        },
-        valor: {
-          servico: 0,
-          descontoCondicionado: 0,
-          descontoIncondicionado: 0,
-        },
-      },
-    ],
-  });
 
   // Updated input handler for nested structures and arrays
   const handleInputChange = (path, value) => {
