@@ -1,0 +1,21 @@
+.app-footer {
+  padding: 1rem 2rem;
+  background-color: #f9fafb; /* Same as main content background */
+  border-top: 1px solid #e5e7eb;
+  color: #6b7280; /* Gray-500 */
+  font-size: 0.875rem;
+  /* This footer will be inside the main content area */
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.app-version {
+  font-weight: 500;
+  color: #4b5563; /* Gray-600 */
+}

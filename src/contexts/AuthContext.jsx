@@ -6,10 +6,16 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null); // <-- Add profile state
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const handleSignOut = () => {
+    supabase.auth.signOut();
+    // No need to manually set states to null, onAuthStateChange will handle it
+  };
+
   useEffect(() => {
+    // Initial session and profile fetch
     const getSessionAndProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
@@ -28,6 +34,7 @@ export const AuthProvider = ({ children }) => {
 
     getSessionAndProfile();
 
+    // Listener for Supabase auth events (SIGNED_IN, SIGNED_OUT)
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
@@ -46,16 +53,25 @@ export const AuthProvider = ({ children }) => {
       }
     );
 
+    // Listener for our custom session expired event from Axios interceptor
+    const handleSessionExpired = () => {
+      console.log('Handling session-expired event. Signing out.');
+      handleSignOut();
+    };
+    window.addEventListener('session-expired', handleSessionExpired);
+
+    // Cleanup function
     return () => {
       authListener.subscription.unsubscribe();
+      window.removeEventListener('session-expired', handleSessionExpired);
     };
   }, []);
 
   const value = {
     session,
     user,
-    profile, // <-- Expose profile
-    signOut: () => supabase.auth.signOut(),
+    profile,
+    signOut: handleSignOut, // Expose the sign out function
   };
 
   return (

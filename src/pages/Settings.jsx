@@ -1,110 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Settings.css';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const [apiKey, setApiKey] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [certificateFile, setCertificateFile] = useState(null);
+  const [certificatePassword, setCertificatePassword] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState(null);
 
-  useEffect(() => {
-    // Load API key from localStorage
-    const storedApiKey = localStorage.getItem('technospeed_api_key');
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      setCertificateFile(e.target.files[0]);
     }
-  }, []);
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    localStorage.setItem('technospeed_api_key', apiKey);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
   };
 
-  const handleClear = () => {
-    if (window.confirm('Tem certeza que deseja remover a chave de API?')) {
-      localStorage.removeItem('technospeed_api_key');
-      setApiKey('');
-      setSaved(false);
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!certificateFile || !certificatePassword) {
+      setMessage({ type: 'error', text: 'Por favor, selecione o arquivo do certificado e digite a senha.' });
+      return;
     }
+    
+    setUploading(true);
+    setMessage({ type: 'info', text: 'Funcionalidade de upload ainda não implementada.' });
+    
+    // Placeholder for future implementation:
+    // 1. Create a FormData object
+    // 2. Append the file and password
+    // 3. Call a service function to upload the certificate to PlugNotas API
+    //    (e.g., `uploadCertificate(formData)`)
+    console.log('File:', certificateFile.name);
+    console.log('Password:', certificatePassword);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setUploading(false);
+    }, 2000);
   };
 
   return (
     <div className="settings-container">
       <div className="settings-header">
-        <button className="btn-back" onClick={() => navigate('/')}>
-          ← Voltar
-        </button>
         <h2>Configurações</h2>
       </div>
 
       <div className="settings-content">
-        <form onSubmit={handleSave} className="settings-form">
+        <form onSubmit={handleUpload} className="settings-form">
           <div className="form-section">
-            <h3>Configurações da API Technospeed</h3>
+            <h3>Certificado Digital (A1)</h3>
             <p className="section-description">
-              Configure sua chave de API para integração com o PlugNotas (Technospeed).
-              A chave será armazenada localmente no seu navegador.
-            </p>
-            <p className="section-description" style={{ fontSize: '0.85rem', color: '#dc2626' }}>
-              <strong>⚠️ Nota de Segurança:</strong> Para ambientes de produção, recomenda-se implementar
-              um backend que gerencie as chaves de API de forma segura. Esta implementação é adequada
-              para desenvolvimento e testes.
+              Faça o upload do seu certificado digital (.pfx ou .p12) e informe a senha para autenticar a emissão das suas notas fiscais.
             </p>
 
             <div className="form-group">
-              <label>Chave de API (x-api-key)</label>
+              <label htmlFor="cert-file">Arquivo do Certificado</label>
               <input
-                type="text"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Digite sua chave de API"
+                type="file"
+                id="cert-file"
+                accept=".pfx, .p12"
+                onChange={handleFileChange}
+                className="file-input"
               />
-              <small>
-                Obtenha sua chave de API no painel do PlugNotas.
-                Ambiente: Sandbox (api.sandbox.plugnotas.com.br)
-              </small>
             </div>
 
-            {saved && (
-              <div className="alert alert-success">
-                Configurações salvas com sucesso!
+            <div className="form-group">
+              <label htmlFor="cert-password">Senha do Certificado</label>
+              <input
+                type="password"
+                id="cert-password"
+                value={certificatePassword}
+                onChange={(e) => setCertificatePassword(e.target.value)}
+                placeholder="Digite a senha do seu certificado"
+              />
+            </div>
+
+            {message && (
+              <div className={`alert alert-${message.type}`}>
+                {message.text}
               </div>
             )}
 
             <div className="form-actions">
-              {apiKey && (
-                <button type="button" className="btn-danger" onClick={handleClear}>
-                  Remover Chave
-                </button>
-              )}
-              <button type="submit" className="btn-primary">
-                Salvar Configurações
+              <button type="submit" className="btn-primary" disabled={uploading}>
+                {uploading ? 'Enviando...' : 'Salvar Certificado'}
               </button>
-            </div>
-          </div>
-
-          <div className="info-section">
-            <h3>Informações da API</h3>
-            <div className="info-list">
-              <div className="info-item-settings">
-                <strong>Ambiente:</strong> Sandbox
-              </div>
-              <div className="info-item-settings">
-                <strong>URL Base:</strong> https://api.sandbox.plugnotas.com.br
-              </div>
-              <div className="info-item-settings">
-                <strong>Endpoints disponíveis:</strong>
-                <ul>
-                  <li>POST /nfse - Criar NFS-e</li>
-                  <li>GET /nfse/:id - Consultar NFS-e</li>
-                  <li>GET /nfse/pdf/:id - Baixar PDF</li>
-                  <li>GET /nfse/xml/:id - Baixar XML</li>
-                  <li>POST /nfse/cancelar/:id - Cancelar NFS-e</li>
-                  <li>POST /nfse/email/:id - Enviar por email</li>
-                </ul>
-              </div>
             </div>
           </div>
         </form>

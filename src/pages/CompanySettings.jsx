@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getCompany, saveCompany } from '../services/companyService';
-import './CompanySettings.css'; // We will create this file
+import { registerCompanyWithPlugNotas } from '../services/plugnotasService';
+import './CompanySettings.css';
 
 const initialState = {
   cpf_cnpj: '',
@@ -10,16 +11,20 @@ const initialState = {
   inscricao_estadual: '',
   email: '',
   telefone: '',
+  simples_nacional: true,
+  regime_tributario: 1, // 1 = Simples Nacional
+  incentivo_fiscal: false,
+  incentivador_cultural: false,
+  regime_tributario_especial: 0,
   endereco: {
-    cep: '',
-    logradouro: '',
-    numero: '',
-    complemento: '',
-    bairro: '',
-    cidade: '',
-    estado: '',
-    codigo_cidade: '',
+    cep: '', logradouro: '', numero: '', complemento: '',
+    bairro: '', cidade: '', estado: '', codigo_cidade: '',
+    // Fields required by PlugNotas API that might not be in ViaCEP
+    tipoLogradouro: '', 
+    tipoBairro: 'Bairro',
   },
+  // Placeholder for future config objects
+  nfse: { producao: false, cidadePrestacao: '' },
 };
 
 const CompanySettings = () => {
@@ -35,8 +40,13 @@ const CompanySettings = () => {
         setLoading(true);
         const company = await getCompany();
         if (company) {
-          // Merge with initial state to ensure all fields are present
-          setFormData(prev => ({ ...prev, ...company }));
+          // Deep merge to ensure all nested objects and fields are present
+          setFormData(prev => ({
+            ...prev,
+            ...company,
+            endereco: { ...prev.endereco, ...(company.endereco || {}) },
+            nfse: { ...prev.nfse, ...(company.nfse || {}) },
+          }));
         }
       } catch (err) {
         setError('Falha ao carregar os dados da empresa.');
@@ -64,160 +74,114 @@ const CompanySettings = () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
+
     try {
-      await saveCompany(formData);
-      setSuccess('Dados da empresa salvos com sucesso!');
+      // Step 1: Save data locally to our Supabase DB
+      setSuccess('Salvando dados locais...');
+      const localData = await saveCompany(formData);
+      setFormData(prev => ({ ...prev, ...localData })); // Update state with any DB defaults
+      setSuccess('Dados salvos com sucesso! Registrando no provedor fiscal...');
+
+      // Step 2: Register the company with the external provider
+      // Note: You might need to transform `formData` to match the API payload exactly
+      const apiPayload = {
+        ...formData,
+        // Ensure nested objects are what the API expects
+        endereco: {
+          ...formData.endereco,
+          // The API uses 'descricaoCidade' for city name
+          descricaoCidade: formData.endereco.cidade,
+        },
+        // Remove fields the API doesn't recognize, if any
+      };
+      
+      const plugNotasResponse = await registerCompanyWithPlugNotas(apiPayload);
+      setSuccess(`Empresa registrada com sucesso! Protocolo: ${plugNotasResponse.protocol}`);
+
     } catch (err) {
-      setError('Erro ao salvar os dados. Verifique os campos e tente novamente.');
+      setError(err.message || 'Ocorreu um erro desconhecido.');
       console.error(err);
     } finally {
       setSaving(false);
     }
   };
   
-  // CNPJ Lookup
-  useEffect(() => {
-    const cnpj = formData.cpf_cnpj.replace(/\D/g, '');
-    if (cnpj.length === 14) {
-      fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
-        .then(res => res.ok ? res.json() : Promise.reject('CNPJ inválido'))
-        .then(data => {
-          handleInputChange('razao_social', data.razao_social || '');
-          handleInputChange('nome_fantasia', data.nome_fantasia || '');
-          handleAddressChange('cep', data.cep || '');
-          handleAddressChange('logradouro', data.logradouro || '');
-          handleAddressChange('numero', data.numero || '');
-          handleAddressChange('bairro', data.bairro || '');
-          handleAddressChange('cidade', data.municipio || '');
-          handleAddressChange('estado', data.uf || '');
-        })
-        .catch(console.error);
-    }
-  }, [formData.cpf_cnpj]);
-
-  // CEP Lookup
-  useEffect(() => {
-    const cep = formData.endereco.cep.replace(/\D/g, '');
-    if (cep.length === 8) {
-      fetch(`https://viacep.com.br/ws/${cep}/json/`)
-        .then(res => res.ok ? res.json() : Promise.reject('CEP inválido'))
-        .then(data => {
-          if (data.erro) return;
-          handleAddressChange('logradouro', data.logradouro || '');
-          handleAddressChange('bairro', data.bairro || '');
-          handleAddressChange('cidade', data.localidade || '');
-          handleAddressChange('estado', data.uf || '');
-          handleAddressChange('codigo_cidade', data.ibge || '');
-        })
-        .catch(console.error);
-    }
-  }, [formData.endereco.cep]);
-
-
-  if (loading) {
-    return <div>Carregando...</div>;
-  }
+  if (loading) return <div>Carregando...</div>;
 
   return (
     <div className="company-settings-container">
       <div className="form-header">
-        <h2>Dados da Empresa</h2>
-        <p>Estas informações serão usadas para a emissão das suas notas fiscais.</p>
+        <h2>Dados da Empresa (Emitente)</h2>
+        <p>Informações da sua empresa para emissão das notas fiscais.</p>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
       <form onSubmit={handleSubmit} className="company-form">
+        {/* Basic Info */}
         <section className="form-section">
           <h3>Identificação</h3>
           <div className="form-row">
-            <div className="form-group">
-              <label>CNPJ</label>
-              <input type="text" value={formData.cpf_cnpj} onChange={e => handleInputChange('cpf_cnpj', e.target.value)} required />
-            </div>
-            <div className="form-group">
-              <label>Razão Social</label>
-              <input type="text" value={formData.razao_social} onChange={e => handleInputChange('razao_social', e.target.value)} required />
-            </div>
+            <div className="form-group"><label>CNPJ</label><input type="text" value={formData.cpf_cnpj} onChange={e => handleInputChange('cpf_cnpj', e.target.value)} required /></div>
+            <div className="form-group"><label>Razão Social</label><input type="text" value={formData.razao_social} onChange={e => handleInputChange('razao_social', e.target.value)} required /></div>
           </div>
           <div className="form-row">
-            <div className="form-group">
-              <label>Nome Fantasia</label>
-              <input type="text" value={formData.nome_fantasia} onChange={e => handleInputChange('nome_fantasia', e.target.value)} />
-            </div>
-          </div>
-           <div className="form-row">
-            <div className="form-group">
-              <label>Inscrição Municipal</label>
-              <input type="text" value={formData.inscricao_municipal} onChange={e => handleInputChange('inscricao_municipal', e.target.value)} />
-            </div>
-             <div className="form-group">
-              <label>Inscrição Estadual</label>
-              <input type="text" value={formData.inscricao_estadual} onChange={e => handleInputChange('inscricao_estadual', e.target.value)} />
-            </div>
+            <div className="form-group"><label>Nome Fantasia</label><input type="text" value={formData.nome_fantasia} onChange={e => handleInputChange('nome_fantasia', e.target.value)} /></div>
+            <div className="form-group"><label>Inscrição Municipal</label><input type="text" value={formData.inscricao_municipal} onChange={e => handleInputChange('inscricao_municipal', e.target.value)} /></div>
           </div>
         </section>
 
-        <section className="form-section">
-          <h3>Contato</h3>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Email</label>
-              <input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Telefone</label>
-              <input type="tel" value={formData.telefone} onChange={e => handleInputChange('telefone', e.target.value)} />
-            </div>
-          </div>
-        </section>
-
+        {/* Address */}
         <section className="form-section">
           <h3>Endereço</h3>
+           <div className="form-row">
+            <div className="form-group"><label>CEP</label><input type="text" value={formData.endereco.cep} onChange={e => handleAddressChange('cep', e.target.value)} /></div>
+            <div className="form-group"><label>Cidade</label><input type="text" value={formData.endereco.cidade} onChange={e => handleAddressChange('cidade', e.target.value)} /></div>
+            <div className="form-group"><label>UF</label><input type="text" maxLength="2" value={formData.endereco.estado} onChange={e => handleAddressChange('estado', e.target.value)} /></div>
+          </div>
+          <div className="form-row">
+            <div className="form-group"><label>Logradouro</label><input type="text" className="flex-2" value={formData.endereco.logradouro} onChange={e => handleAddressChange('logradouro', e.target.value)} /></div>
+            <div className="form-group"><label>Número</label><input type="text" value={formData.endereco.numero} onChange={e => handleAddressChange('numero', e.target.value)} /></div>
+          </div>
+        </section>
+
+        {/* Tax Info */}
+        <section className="form-section">
+          <h3>Informações Fiscais</h3>
           <div className="form-row">
             <div className="form-group">
-              <label>CEP</label>
-              <input type="text" value={formData.endereco.cep} onChange={e => handleAddressChange('cep', e.target.value)} />
+              <label>Regime Tributário</label>
+              <select value={formData.regime_tributario} onChange={e => handleInputChange('regime_tributario', parseInt(e.target.value))}>
+                <option value={1}>Simples Nacional</option>
+                <option value={2}>Simples Nacional - Excesso</option>
+                <option value={3}>Regime Normal - Lucro Presumido</option>
+                <option value={4}>Normal - Lucro Real</option>
+                <option value={5}>MEI</option>
+                <option value={0}>Nenhum</option>
+              </select>
             </div>
-            <div className="form-group flex-2">
-              <label>Logradouro</label>
-              <input type="text" value={formData.endereco.logradouro} onChange={e => handleAddressChange('logradouro', e.target.value)} />
-            </div>
-             <div className="form-group">
-              <label>Número</label>
-              <input type="text" value={formData.endereco.numero} onChange={e => handleAddressChange('numero', e.target.value)} />
+            <div className="form-group">
+              <label>Regime Tributário Especial</label>
+              <select value={formData.regime_tributario_especial} onChange={e => handleInputChange('regime_tributario_especial', parseInt(e.target.value))}>
+                <option value={0}>Sem Regime Tributário Especial</option>
+                <option value={1}>Micro Empresa Municipal</option>
+                <option value={5}>MEI</option>
+                <option value={6}>ME EPP</option>
+              </select>
             </div>
           </div>
           <div className="form-row">
-            <div className="form-group">
-              <label>Complemento</label>
-              <input type="text" value={formData.endereco.complemento} onChange={e => handleAddressChange('complemento', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Bairro</label>
-              <input type="text" value={formData.endereco.bairro} onChange={e => handleAddressChange('bairro', e.target.value)} />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Cidade</label>
-              <input type="text" value={formData.endereco.cidade} onChange={e => handleAddressChange('cidade', e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label>Estado (UF)</label>
-              <input type="text" maxLength="2" value={formData.endereco.estado} onChange={e => handleAddressChange('estado', e.target.value)} />
-            </div>
-             <div className="form-group">
-              <label>Código IBGE da Cidade</label>
-              <input type="text" value={formData.endereco.codigo_cidade} onChange={e => handleAddressChange('codigo_cidade', e.target.value)} />
+            <div className="form-group-checkbox">
+              <input type="checkbox" id="simples_nacional" checked={formData.simples_nacional} onChange={e => handleInputChange('simples_nacional', e.target.checked)} />
+              <label htmlFor="simples_nacional">Optante pelo Simples Nacional</label>
             </div>
           </div>
         </section>
 
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? 'Salvando...' : 'Salvar Alterações'}
+            {saving ? 'Salvando...' : 'Salvar e Registrar Empresa'}
           </button>
         </div>
       </form>

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { createNFSe as createNFSeExternal } from '../services/nfseService';
 import { createNfse as createNfseSupabase } from '../services/nfseSupabaseService';
 import { getCustomers } from '../services/customerService';
+import { getCompany } from '../services/companyService'; // Import getCompany
 import { useAuth } from '../contexts/AuthContext';
 import CustomerSelector from '../components/CustomerSelector';
 import AddCustomerModal from '../components/AddCustomerModal';
 import './NewNFSe.css';
 
-// Helper to generate a random ID for idIntegracao
 const generateIdIntegracao = () => `ID-${Date.now()}`;
 
 const NewNFSe = () => {
@@ -16,74 +16,88 @@ const NewNFSe = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [lookupLoading, setLookupLoading] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true); // For initial data load
 
   const [customers, setCustomers] = useState([]);
   const [isCustomerModalOpen, setCustomerModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-
-  // Load customers on mount
-  useEffect(() => {
-    const loadCustomers = async () => {
-      try {
-        const customerList = await getCustomers();
-        setCustomers(customerList);
-      } catch (err) {
-        console.error("Failed to load customers", err);
-        // Non-critical error, so we don't block the form
-      }
-    };
-    loadCustomers();
-  }, []);
+  
+  const [company, setCompany] = useState(null); // State to hold company data
 
   const [formData, setFormData] = useState({
     idIntegracao: generateIdIntegracao(),
-    prestador: {
-      cpfCnpj: '08187168000160', // Pre-filled for demo
-    },
+    prestador: { cpfCnpj: '' }, // Initially empty
     tomador: {
-      cpfCnpj: '',
-      razaoSocial: '',
-      inscricaoMunicipal: '',
-      email: '',
+      cpfCnpj: '', razaoSocial: '', inscricaoMunicipal: '', email: '',
       endereco: {
-        descricaoCidade: '',
-        cep: '',
-        tipoLogradouro: '',
-        logradouro: '',
-        tipoBairro: '',
-        codigoCidade: '',
-        complemento: '',
-        estado: '',
-        numero: '',
-        bairro: '',
+        descricaoCidade: '', cep: '', tipoLogradouro: '', logradouro: '',
+        tipoBairro: '', codigoCidade: '', complemento: '', estado: '',
+        numero: '', bairro: '',
       },
     },
     servico: [
       {
-        codigo: '14.10',
-        codigoTributacao: '14.10',
-        discriminacao: '',
-        cnae: '7490104',
-        iss: { tipoTributacao: 7, exigibilidade: 1, aliquota: 3 },
+        codigo: '14.10', codigoTributacao: '14.10', discriminacao: '',
+        cnae: '7490104', iss: { tipoTributacao: 7, exigibilidade: 1, aliquota: 3 },
         valor: { servico: 0, descontoCondicionado: 0, descontoIncondicionado: 0 },
       },
     ],
   });
+
+  // Load initial data (company and customers)
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setPageLoading(true);
+        // Fetch company and customers in parallel
+        const [companyData, customerList] = await Promise.all([
+          getCompany(),
+          getCustomers()
+        ]);
+
+        if (!companyData || !companyData.cpf_cnpj) {
+          setError('Dados da empresa emitente não configurados.');
+          setPageLoading(false);
+          return;
+        }
+        
+        setCompany(companyData);
+        setCustomers(customerList);
+
+        // Pre-fill prestador data
+        setFormData(prev => ({
+          ...prev,
+          prestador: {
+            cpfCnpj: companyData.cpf_cnpj,
+            // You can add other prestador fields here if needed by the API
+          }
+        }));
+
+      } catch (err) {
+        console.error("Failed to load initial data", err);
+        setError('Falha ao carregar dados. Tente novamente.');
+      } finally {
+        setPageLoading(false);
+      }
+    };
+    loadInitialData();
+  }, []);
 
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
     setFormData(prev => ({
       ...prev,
       tomador: {
-        ...prev.tomador, // Keep any fields not in customer object
+        ...prev.tomador,
         cpfCnpj: customer.cpf_cnpj || '',
         razaoSocial: customer.razao_social || '',
         inscricaoMunicipal: customer.inscricao_municipal || '',
         email: customer.email || '',
         endereco: {
           ...prev.tomador.endereco,
-          ...customer.endereco, // Merge addresses, customer data takes precedence
+          ...(customer.endereco || {}),
+          // Ensure specific fields are mapped correctly if names differ
+          descricaoCidade: customer.endereco?.cidade || '',
         },
       },
     }));
@@ -93,19 +107,6 @@ const NewNFSe = () => {
     setCustomers(prev => [...prev, newCustomer].sort((a, b) => a.razao_social.localeCompare(b.razao_social)));
     handleSelectCustomer(newCustomer);
   };
-
-  // CNPJ/CEP lookups are disabled if a customer is selected
-  useEffect(() => {
-    if (selectedCustomer) return;
-    const cnpj = formData.tomador.cpfCnpj.replace(/\D/g, '');
-    if (cnpj.length === 14) { /* ... CNPJ lookup logic ... */ }
-  }, [formData.tomador.cpfCnpj, selectedCustomer]);
-
-  useEffect(() => {
-    if (selectedCustomer) return;
-    const cep = formData.tomador.endereco.cep.replace(/\D/g, '');
-    if (cep.length === 8) { /* ... CEP lookup logic ... */ }
-  }, [formData.tomador.endereco.cep, selectedCustomer]);
 
   const handleInputChange = (path, value) => {
     setFormData(prev => {
@@ -143,6 +144,27 @@ const NewNFSe = () => {
     }
   };
 
+  if (pageLoading) {
+    return <div className="loading-state">Carregando configurações...</div>;
+  }
+
+  // If company is not configured, block the form
+  if (!company) {
+    return (
+      <div className="new-nfse-container">
+        <div className="alert alert-error">
+          <h3>Prestador não configurado</h3>
+          <p>
+            Você precisa primeiro cadastrar os dados da sua empresa (a emitente da nota) para poder criar uma NFS-e.
+          </p>
+          <Link to="/empresa/configuracoes" className="btn-primary" style={{marginTop: '1rem'}}>
+            Configurar Empresa
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const isTomadorLocked = !!selectedCustomer;
 
   return (
@@ -158,7 +180,7 @@ const NewNFSe = () => {
           <button className="btn-secondary" onClick={() => navigate('/')}>Cancelar</button>
         </div>
 
-        {error && <div className="alert alert-error"><p>{error}</p></div>}
+        {error && !company && <div className="alert alert-error"><p>{error}</p></div>}
 
         <form onSubmit={handleSubmit} className="nfse-form">
           <input type="hidden" value={formData.idIntegracao} readOnly />
@@ -194,8 +216,7 @@ const NewNFSe = () => {
                 <input type="text" value={formData.tomador.razaoSocial} onChange={(e) => handleInputChange('tomador.razaoSocial', e.target.value)} required readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
               </div>
             </div>
-            {/* ... other tomador fields ... */}
-             <div className="form-row">
+            <div className="form-row">
               <div className="form-group">
                 <label>Email *</label>
                 <input type="email" value={formData.tomador.email} onChange={(e) => handleInputChange('tomador.email', e.target.value)} required readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
@@ -203,10 +224,21 @@ const NewNFSe = () => {
             </div>
           </section>
           
-          {/* Address and Service sections remain, but could also be populated from customer data */}
+          <section className="form-section">
+            <h3>Dados do Serviço</h3>
+            <div className="form-group">
+              <label>Discriminação do Serviço *</label>
+              <textarea value={formData.servico[0].discriminacao} onChange={(e) => handleInputChange('servico.0.discriminacao', e.target.value)} rows="4" required />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Valor do Serviço (R$) *</label>
+                <input type="number" step="0.01" value={formData.servico[0].valor.servico} onChange={(e) => handleInputChange('servico.0.valor.servico', parseFloat(e.target.value) || 0)} required />
+              </div>
+            </div>
+          </section>
 
           <div className="form-actions">
-            <button type="button" className="btn-secondary" onClick={() => navigate('/')}>Cancelar</button>
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Enviando...' : 'Criar NFS-e'}
             </button>

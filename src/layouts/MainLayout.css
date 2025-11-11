@@ -4,9 +4,15 @@
   min-height: 100vh;
 }
 
-.main-content {
+.main-content-wrapper {
+  display: flex;
+  flex-direction: column;
   flex-grow: 1;
   margin-left: 260px; /* Same as sidebar width */
-  padding: 2rem;
   width: calc(100% - 260px);
+}
+
+.main-content {
+  flex-grow: 1; /* This makes the content area expand */
+  padding: 2rem;
 }
