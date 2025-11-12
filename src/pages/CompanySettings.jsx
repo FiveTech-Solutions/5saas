@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { getCompany, saveCompany } from '../services/companyService';
-import { registerCompanyWithPlugNotas } from '../services/plugnotasService';
+import { getCompany } from '../services/companyService';
+import { registerCompanyWithPlugNotas, getCompanyDetailsByCnpj } from '../services/plugnotasService';
 import { getAddressFromCEP } from '../services/viaCepService';
 import { keysToCamelCase } from '../utils/helpers'; // Import the helper
 // Certificate logic is temporarily simplified
@@ -147,24 +146,38 @@ const CompanySettings = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const company = await getCompany();
+        const company = await getCompany(); // This now fetches from PlugNotas
 
         if (company) {
-          // Deep merge to ensure all nested objects and fields are present
+          // Map PlugNotas response to formData
           setFormData(prev => ({
             ...prev,
-            ...company,
-            endereco: { ...prev.endereco, ...(company.endereco || {}) },
-            nfse: { ...prev.nfse, ...(company.nfse || {}) },
-            nfe: { ...prev.nfe, ...(company.nfe || {}) },
-            nfce: { ...prev.nfce, ...(company.nfce || {}) },
-            mdfe: { ...prev.mdfe, ...(company.mdfe || {}) },
-            cfe: { ...prev.cfe, ...(company.cfe || {}) },
-            nfcom: { ...prev.nfcom, ...(company.nfcom || {}) },
+            cpf_cnpj: company.cpf_cnpj || '',
+            razao_social: company.razao_social || '',
+            nome_fantasia: company.nome || '',
+            inscricao_municipal: company.inscricao_municipal || '',
+            inscricao_estadual: company.inscricao_estadual || '',
+            email: company.email || '',
+            telefone: company.telefone ? company.telefone.replace(/\D/g, '') : '',
+            endereco: {
+              ...prev.endereco, // Keep defaults for fields not in PlugNotas response
+              cep: company.endereco?.cep || '',
+              logradouro: company.endereco?.logradouro || '',
+              numero: company.endereco?.numero || '',
+              complemento: company.endereco?.complemento || '',
+              bairro: company.endereco?.bairro || '',
+              cidade: company.endereco?.municipio || '',
+              estado: company.endereco?.uf || '',
+              descricaoCidade: company.endereco?.municipio || '',
+              // codigo_cidade might need to be fetched separately if not in PlugNotas response
+            },
+            // Fiscal info from PlugNotas might not be available in this endpoint,
+            // so we might keep the initial state defaults or fetch from another source.
+            // For now, we'll rely on initial state defaults for fiscal info.
           }));
         }
       } catch (err) {
-        setError('Falha ao carregar os dados da empresa.');
+        setError('Falha ao carregar os dados da empresa do PlugNotas.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -210,14 +223,8 @@ const CompanySettings = () => {
     setSuccess(null);
 
     try {
-      // Step 1: Save data locally to our Supabase DB
-      setSuccess('Salvando dados locais...');
-      // Use the mocked certificate ID for local saving as well
-      const localData = await saveCompany({ ...formData, certificado: MOCKED_CERTIFICATE_ID });
-      setFormData(prev => ({ ...prev, ...localData }));
-      setSuccess('Dados salvos com sucesso! Registrando no provedor fiscal...');
-
-      // Step 2: Prepare and register the company with the external provider
+      // Step 1: Removed local save to Supabase as per user request.
+      // Now, this component primarily registers the company with the external provider.
       
       // Parse phone into DDD and number
       const phoneString = formData.telefone.replace(/\D/g, '');
@@ -240,10 +247,10 @@ const CompanySettings = () => {
       const apiPayload = keysToCamelCase(rawApiPayload);
       
       const plugNotasResponse = await registerCompanyWithPlugNotas(apiPayload);
-      setSuccess(`Empresa registrada com sucesso! Protocolo: ${plugNotasResponse.protocol || 'N/A'}`);
+      setSuccess(`Empresa registrada com sucesso no PlugNotas! Protocolo: ${plugNotasResponse.protocol || 'N/A'}`);
 
     } catch (err) {
-      setError(err.message || 'Ocorreu um erro desconhecido.');
+      setError(err.message || 'Ocorreu um erro desconhecido ao registrar a empresa no PlugNotas.');
       console.error(err);
     } finally {
       setSaving(false);
