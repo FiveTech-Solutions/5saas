@@ -64,3 +64,87 @@ export const getNFSeDetails = async (idNotaOrProtocol) => {
     throw error;
   }
 };
+
+/**
+ * Registers a new Tomador with the PlugNotas API.
+ * @param {object} tomadorData The full tomador data object, matching the API docs.
+ * @returns {Promise<object>} The response from the PlugNotas API.
+ */
+export const registerTomadorPlugNotas = async (tomadorData) => {
+  try {
+    const response = await api.post('/nfse/tomador', tomadorData);
+    return response.data;
+  } catch (error) {
+    const apiError = error.response?.data;
+    if (apiError) {
+      const message = apiError.message || (apiError.erros && apiError.erros.join(', ')) || 'Erro desconhecido da API.';
+      throw new Error(`Falha ao registrar tomador no provedor: ${message}`);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Fetches tomador details from PlugNotas API using CPF/CNPJ.
+ * @param {string} cpfCnpj The CPF/CNPJ of the tomador to query.
+ * @returns {Promise<object>} The tomador details from the PlugNotas API.
+ */
+export const getTomadorPlugNotas = async (cpfCnpj) => {
+  try {
+    const response = await api.get(`/nfse/tomador/${cpfCnpj}`);
+    return response.data;
+  } catch (error) {
+    const apiError = error.response?.data;
+    if (apiError) {
+      // If tomador not found, the API might return a 404 or a specific error message.
+      // We'll treat 404 as "not found" and return null, otherwise rethrow.
+      if (error.response.status === 404) {
+        return null; // Tomador not found
+      }
+      const message = apiError.message || (apiError.erros && apiError.erros.join(', ')) || 'Erro desconhecido da API.';
+      throw new Error(`Falha ao consultar tomador no provedor: ${message}`);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Registers a new Servico with the PlugNotas API.
+ * @param {object} servicoData The full servico data object, matching the API docs.
+ * @returns {Promise<object>} The response from the PlugNotas API.
+ */
+export const registerServicoPlugNotas = async (servicoData) => {
+  try {
+    const response = await api.post('/nfse/servico', servicoData);
+    return response.data;
+  } catch (error) {
+    const apiError = error.response?.data;
+    if (apiError) {
+      const message = apiError.message || (apiError.erros && apiError.erros.join(', ')) || 'Erro desconhecido da API.';
+      throw new Error(`Falha ao registrar serviço no provedor: ${message}`);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Fetches servico details from PlugNotas API using idServico.
+ * @param {string} idServico The idIntegracao or codigo of the servico to query.
+ * @returns {Promise<object>} The servico details from the PlugNotas API.
+ */
+export const getServicoPlugNotas = async (idServico) => {
+  try {
+    const response = await api.get(`/nfse/servico/${idServico}`);
+    return response.data;
+  } catch (error) {
+    const apiError = error.response?.data;
+    if (apiError) {
+      if (error.response.status === 404) {
+        return null; // Servico not found
+      }
+      const message = apiError.message || (apiError.erros && apiError.erros.join(', ')) || 'Erro desconhecido da API.';
+      throw new Error(`Falha ao consultar serviço no provedor: ${message}`);
+    }
+    throw error;
+  }
+};
