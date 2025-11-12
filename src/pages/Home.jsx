@@ -13,6 +13,9 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
+import {
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination
+} from '@mui/material';
 import { consultarNotasPorPeriodo } from '../services/nfseService'; // Importar o serviço correto
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDate } from '../utils/helpers'; // Importar helpers
@@ -46,8 +49,8 @@ const Home = () => {
   });
 
   // Estados para paginação local
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [page, setPage] = useState(0); // Material UI TablePagination é 0-indexed
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // State for dashboard data
   const [dashboardStats, setDashboardStats] = useState({ totalValue: 0, totalNotes: 0, avgTicket: 0 });
@@ -130,7 +133,7 @@ const Home = () => {
 
       if (resetPagina) {
         setNfseList(fetchedNotes);
-        setCurrentPage(1); // Resetar paginação local ao carregar novas notas
+        setPage(0); // Resetar paginação local ao carregar novas notas
         processDashboardData(fetchedNotes); // Processar dados para o dashboard
       } else {
         setNfseList(prev => [...prev, ...fetchedNotes]);
@@ -157,13 +160,17 @@ const Home = () => {
     }
   };
 
-  // Lógica de paginação local
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentNfses = nfseList.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(nfseList.length / itemsPerPage);
+  // Lógica de paginação local para Material UI
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // Voltar para a primeira página ao mudar o número de linhas por página
+  };
+
+  const currentNfses = nfseList.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const chartOptions = {
     responsive: true,
@@ -255,59 +262,52 @@ const Home = () => {
       )}
 
       {!loading && !error && nfseList.length > 0 && (
-        <div className="nfse-table-container">
-          <table className="nfse-table">
-            <thead>
-              <tr>
-                <th>Número</th>
-                <th>Emissão</th>
-                <th>Tomador</th>
-                <th>Valor</th>
-                <th>Situação</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer component={Paper} className="nfse-table-container">
+          <Table className="nfse-table" aria-label="Tabela de NFS-e">
+            <TableHead>
+              <TableRow>
+                <TableCell>Número</TableCell>
+                <TableCell>Emissão</TableCell>
+                <TableCell>Tomador</TableCell>
+                <TableCell align="right">Valor</TableCell>
+                <TableCell>Situação</TableCell>
+                <TableCell>Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {currentNfses.map((nfseItem) => (
-                <tr key={nfseItem.id} onClick={() => navigate(`/nfse/${nfseItem.id}`)}>
-                  <td>{nfseItem.numeroNfse || nfseItem.id}</td>
-                  <td>{formatDate(nfseItem.emissao)}</td>
-                  <td>{nfseItem.tomador || 'N/A'}</td>
-                  <td>{formatCurrency(nfseItem.valorServico || 0)}</td>
-                  <td>
+                <TableRow key={nfseItem.id} onClick={() => navigate(`/nfse/${nfseItem.id}`)} style={{ cursor: 'pointer' }}>
+                  <TableCell component="th" scope="row">
+                    {nfseItem.numeroNfse || nfseItem.id}
+                  </TableCell>
+                  <TableCell>{formatDate(nfseItem.emissao)}</TableCell>
+                  <TableCell>{nfseItem.tomador || 'N/A'}</TableCell>
+                  <TableCell align="right">{formatCurrency(nfseItem.valorServico || 0)}</TableCell>
+                  <TableCell>
                     <span className={`nfse-status-badge ${getStatusClass(nfseItem.situacao)}`}>
                       {nfseItem.situacao || 'Processando'}
                     </span>
-                  </td>
-                  <td>
-                    {/* Aqui você pode adicionar botões de ação como visualizar, baixar PDF, etc. */}
+                  </TableCell>
+                  <TableCell>
                     <button className="btn-icon" onClick={(e) => { e.stopPropagation(); navigate(`/nfse/${nfseItem.id}`); }}>
                       Detalhes
                     </button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-
-          {/* Controles de Paginação Local */}
-          <div className="pagination-controls">
-            <button 
-              onClick={() => paginate(currentPage - 1)} 
-              disabled={currentPage === 1 || loading}
-              className="btn-secondary"
-            >
-              Anterior
-            </button>
-            <span>Página {currentPage} de {totalPages}</span>
-            <button 
-              onClick={() => paginate(currentPage + 1)} 
-              disabled={currentPage === totalPages || loading}
-              className="btn-secondary"
-            >
-              Próxima
-            </button>
-          </div>
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={nfseList.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Linhas por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          />
 
           {/* Botão para carregar mais da API, se houver */}
           {paginacaoApi.temMais && (
@@ -321,7 +321,7 @@ const Home = () => {
               </button>
             </div>
           )}
-        </div>
+        </TableContainer>
       )}
     </div>
   );
