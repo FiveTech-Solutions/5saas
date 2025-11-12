@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useIMask } from 'react-imask';
 import { getCompany } from '../services/companyService';
 import { registerCompanyWithPlugNotas, getCompanyDetailsByCnpj } from '../services/plugnotasService';
 import { getAddressFromCEP } from '../services/viaCepService';
@@ -85,6 +86,12 @@ const CompanySettings = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  const { ref: cnpjInputRef, maskRef: cnpjMaskRef } = useIMask({
+    mask: '00.000.000/0000-00',
+    lazy: false,
+    unmask: true, // Get unmasked value in onAccept
+  });
 
   // Certificate logic is temporarily simplified
   // const [certificateFile, setCertificateFile] = useState(null);
@@ -279,7 +286,19 @@ const CompanySettings = () => {
         <section className="form-section">
           <h3>Identificação</h3>
           <div className="form-row">
-            <div className="form-group"><label>CNPJ</label><input type="text" value={formData.cpf_cnpj} onBlur={handleCnpjBlur} onChange={e => handleInputChange('cpf_cnpj', e.target.value)} required disabled className="readonly-input" /></div>
+            <div className="form-group">
+              <label>CNPJ</label>
+              <input
+                type="text"
+                ref={cnpjInputRef}
+                value={formData.cpf_cnpj}
+                onBlur={handleCnpjBlur}
+                onChange={() => handleInputChange('cpf_cnpj', cnpjMaskRef.current.unmaskedValue)}
+                required
+                disabled
+                className="readonly-input"
+              />
+            </div>
             <div className="form-group"><label>Razão Social</label><input type="text" value={formData.razao_social} onChange={e => handleInputChange('razao_social', e.target.value)} required disabled className="readonly-input" /></div>
           </div>
           <div className="form-row">

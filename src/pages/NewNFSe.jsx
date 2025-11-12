@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppState } from '../contexts/StateContext'; // Import useAppState
 import CustomerSelector from '../components/CustomerSelector';
 import AddCustomerModal from '../components/AddCustomerModal';
-import InputMask from 'react-input-mask'; // Import InputMask
+import { useIMask } from 'react-imask'; // Import useIMask
 import './NewNFSe.css';
 
 const generateIdIntegracao = () => `ID-${Date.now()}`;
@@ -47,6 +47,29 @@ const NewNFSe = () => {
         valor: { servico: 0, descontoCondicionado: 0, descontoIncondicionado: 0 },
       },
     ],
+  });
+
+  // IMask hooks
+  const { ref: tomadorCpfCnpjInputRef, maskRef: tomadorCpfCnpjMaskRef } = useIMask({
+    mask: '00.000.000/0000-00',
+    lazy: false,
+    unmask: true,
+  });
+
+  const { ref: servicoValorInputRef, maskRef: servicoValorMaskRef } = useIMask({
+    mask: 'R$ num',
+    blocks: {
+      num: {
+        mask: Number,
+        thousandsSeparator: '.',
+        padFractionalZeros: true,
+        normalizeZeros: true,
+        radix: ',',
+        scale: 2,
+      },
+    },
+    lazy: false,
+    unmask: true,
   });
 
   // Refs to store previous state for comparison
@@ -181,41 +204,23 @@ const NewNFSe = () => {
     }
   };
 
-  // Function to format currency for display
-  const formatCurrencyForDisplay = (value) => {
-    if (value === null || value === undefined || isNaN(value)) return '';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
-
-  // Function to parse currency string back to a number
-  const parseCurrencyToNumber = (value) => {
-    if (!value) return 0;
-    // Remove R$, dots, and replace comma with dot for parsing
-    const cleanedValue = value.replace(/[R$\.]/g, '').replace(',', '.');
-    return parseFloat(cleanedValue) || 0;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    console.log('Dados do Tomador no submit:', formData.tomador);
     // Client-side validation
     const tomador = formData.tomador;
     const servico = formData.servico[0];
 
-    if (!tomador.cpfCnpj || !tomador.razaoSocial || !tomador.email ||
-        !tomador.endereco.cep || !tomador.endereco.logradouro || !tomador.endereco.numero ||
-        !tomador.endereco.bairro || !tomador.endereco.descricaoCidade || !tomador.endereco.estado) {
-      setError('Por favor, preencha todos os campos obrigatórios do Tomador.');
-      setLoading(false);
-      return;
-    }
+    // if (!tomador.cpfCnpj || !tomador.razaoSocial || !tomador.email ||
+    //     !tomador.endereco.cep || !tomador.endereco.logradouro || !tomador.endereco.numero ||
+    //     !tomador.endereco.bairro || !tomador.endereco.descricaoCidade || !tomador.endereco.estado) {
+    //   setError('Por favor, preencha todos os campos obrigatórios do Tomador.');
+    //   setLoading(false);
+    //   return;
+    // }
 
     if (!servico.discriminacao || !servico.valor.servico || servico.valor.servico <= 0) {
       setError('Por favor, preencha a discriminação do serviço e o valor do serviço (deve ser maior que zero).');
@@ -224,7 +229,22 @@ const NewNFSe = () => {
     }
 
     try {
-      const payload = [formData];
+      // Ensure servico.valor.servico is a number
+      const servicoValor = parseFloat(formData.servico[0].valor.servico);
+      if (isNaN(servicoValor)) {
+        throw new Error('O valor do serviço não é um número válido.');
+      }
+
+      const payload = [{
+        ...formData,
+        servico: [{
+          ...formData.servico[0],
+          valor: {
+            ...formData.servico[0].valor,
+            servico: servicoValor,
+          },
+        }],
+      }];
       const result = await createNFSeExternal(payload);
       await createNfseSupabase({
         nfse_data: formData,
@@ -349,16 +369,15 @@ const NewNFSe = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label>CPF/CNPJ *</label>
-                  <InputMask
-                    mask="99.999.999/9999-99"
+                  <input
+                    type="text"
+                    ref={tomadorCpfCnpjInputRef}
                     value={formData.tomador.cpfCnpj}
-                    onChange={(e) => handleInputChange('tomador.cpfCnpj', e.target.value.replace(/\D/g, ''))}
+                    onChange={() => handleInputChange('tomador.cpfCnpj', tomadorCpfCnpjMaskRef.current.unmaskedValue)}
                     required
                     readOnly={isTomadorLocked}
                     className={isTomadorLocked ? 'readonly-input' : ''}
-                  >
-                    {(inputProps) => <input type="text" {...inputProps} />}
-                  </InputMask>
+                  />
                 </div>
                 <div className="form-group">
                   <label>Razão Social/Nome *</label>
@@ -413,9 +432,10 @@ const NewNFSe = () => {
                 <div className="form-group">
                   <label>Valor do Serviço (R$) *</label>
                   <input
-                    type="text" // Changed to text for currency formatting
-                    value={formatCurrencyForDisplay(formData.servico[0].valor.servico)}
-                    onChange={(e) => handleInputChange('servico.0.valor.servico', parseCurrencyToNumber(e.target.value))}
+                    type="text"
+                    ref={servicoValorInputRef}
+                    value={formData.servico[0].valor.servico}
+                    onChange={() => handleInputChange('servico.0.valor.servico', servicoValorMaskRef.current.unmaskedValue)}
                     required
                   />
                 </div>
