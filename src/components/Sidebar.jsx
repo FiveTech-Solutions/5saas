@@ -35,11 +35,8 @@ const Sidebar = () => {
   } = useAuthorization();
   const navigate = useNavigate();
   
-  // State para controlar quais seções estão abertas
-  // Por padrão, todas as seções começam colapsadas para melhor UX
-  const [collapsedSections, setCollapsedSections] = useState(
-    new Set(['NFS-e', 'Serviços Tomados', 'DES-IF', 'Administração', 'Auditoria', 'Dívida Ativa', 'Configurações'])
-  );
+  // State para controlar qual seção está aberta. null se nenhuma estiver aberta.
+  const [expandedSection, setExpandedSection] = useState(null);
   
   const userProfile = getUserProfile();
   
@@ -50,13 +47,7 @@ const Sidebar = () => {
 
   // Função para toggle do colapso de seções
   const toggleSection = (sectionName) => {
-    const newCollapsed = new Set(collapsedSections);
-    if (newCollapsed.has(sectionName)) {
-      newCollapsed.delete(sectionName);
-    } else {
-      newCollapsed.add(sectionName);
-    }
-    setCollapsedSections(newCollapsed);
+    setExpandedSection(prev => (prev === sectionName ? null : sectionName));
   };
 
   // Definição dos módulos com base em permissões
@@ -139,7 +130,7 @@ const Sidebar = () => {
 
   const renderNavLinks = () => {
     return Object.entries(navLinks).map(([module, links]) => {
-      const isCollapsed = collapsedSections.has(module);
+      const isOpen = expandedSection === module;
       
       return (
         <div key={module} className="sidebar-module">
@@ -149,10 +140,10 @@ const Sidebar = () => {
           >
             <h3 className="sidebar-module-title">{module}</h3>
             <div className="sidebar-toggle-icon">
-              {isCollapsed ? <ExpandMore /> : <ExpandLess />}
+              {isOpen ? <ExpandLess /> : <ExpandMore />}
             </div>
           </div>
-          <div className={`sidebar-module-links ${isCollapsed ? 'collapsed' : 'expanded'}`}>
+          <div className={`sidebar-module-links ${isOpen ? 'expanded' : 'collapsed'}`}>
             {links.map((link) => (
               <NavLink key={link.to} to={link.to} end={link.to === '/nfse'} className="sidebar-link">
                 {link.icon}
