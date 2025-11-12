@@ -51,8 +51,8 @@ const ServicosTomados = () => {
               <p><strong>Service Description:</strong> {nfse.nfse_data?.servico?.[0]?.discriminacao || 'N/A'}</p>
               <p><strong>Service Value:</strong> R$ {
                 (nfse.nfse_data?.servico?.[0]?.valor?.servico !== undefined && nfse.nfse_data.servico[0].valor.servico !== null)
-                  ? parseFloat(nfse.nfse_data.servico[0].valor.servico).toFixed(2)
-                  : '0.00'
+                  ? parseFloat(nfse.nfse_data.servico[0].valor.servico).toFixed(2).replace('.', ',')
+                  : '0,00'
               }</p>
               <p><strong>Created At:</strong> {new Date(nfse.created_at).toLocaleString()}</p>
               {/* You can add more details or a link to a detail page here */}

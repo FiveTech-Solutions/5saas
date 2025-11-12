@@ -89,7 +89,8 @@ const Sidebar = () => {
     // Serviços tomados para admin e operador
     if (canEmitNFSe()) {
       links['Serviços Tomados'].push(
-        { to: '/servicos-tomados', text: 'Lançamentos', icon: <Build /> }
+        { to: '/servicos-tomados', text: 'Lançamentos', icon: <Build /> },
+        { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> } // New link
       );
     }
 

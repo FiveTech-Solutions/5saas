@@ -402,8 +402,9 @@ const NewNFSe = () => {
         servico: [{
           ...formData.servico[0],
           valor: {
-            ...formData.servico[0].valor,
             servico: servicoValor,
+            descontoCondicionado: formData.servico[0].valor.descontoCondicionado || 0,
+            descontoIncondicionado: formData.servico[0].valor.descontoIncondicionado || 0,
           },
         }],
       }];
@@ -417,7 +418,7 @@ const NewNFSe = () => {
       navigate('/');
     } catch (err) {
       const errorMessage = err.message || (err.erros && err.erros.join(', ')) || 'Erro desconhecido.';
-      setError(`Erro ao criar NFS-e: ${errorMessage}`);
+      setError(`Erro ao criar NFS-e: ${errorMessage}. Verifique se todos os campos obrigatórios estão preenchidos corretamente e se o valor do serviço é válido.`);
     } finally {
       setLoading(false);
     }

@@ -16,6 +16,7 @@ import AuditoriaSimplesNacional from './pages/AuditoriaSimplesNacional';
 import AuditoriaAutosInfracao from './pages/AuditoriaAutosInfracao';
 import DividaAtiva from './pages/DividaAtiva';
 import MinhasNFSe from './pages/MinhasNFSe';
+import ServiceManagement from './pages/ServiceManagement'; // Import new page
 import AdminTools from './components/AdminTools'; // Temporário para atualizar usuário
 import './App.css';
 
@@ -85,6 +86,7 @@ function App() {
           <Route path="/empresa/configuracoes" element={<CompanySettings />} />
           <Route path="/clientes" element={<Customers />} />
           <Route path="/servicos-tomados" element={<ServicosTomados />} />
+          <Route path="/servicos/*" element={<ServiceManagement />} /> {/* New Service Management Route */}
           <Route path="/des-if" element={<Desif />} />
 
           {/* Rotas com permissões específicas */}

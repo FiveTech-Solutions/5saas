@@ -1,0 +1,102 @@
+.service-list-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: var(--color-background-light);
+    border-radius: 8px;
+    box-shadow: var(--shadow-elevation-low);
+  }
+  
+  .service-list-container .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .service-list-container .list-header h2 {
+    color: var(--color-primary);
+    margin: 0;
+  }
+  
+  .service-list-container .btn-primary {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    background-color: var(--color-primary);
+    color: var(--color-button-text);
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+  
+  .service-list-container .btn-primary:hover {
+    background-color: var(--color-primary-dark);
+    box-shadow: var(--shadow-elevation-medium);
+  }
+  
+  .service-list-container .alert {
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+  }
+  
+  .service-list-container .alert-error {
+    background-color: var(--color-error-light);
+    color: var(--color-error-dark);
+    border: 1px solid var(--color-error-dark);
+  }
+  
+  .service-list-container .loading-state {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1rem;
+    color: var(--color-text-light);
+  }
+  
+  /* Material-UI Table Overrides (adjust as needed for your theme) */
+  .MuiTableCell-head {
+    background-color: var(--color-primary-light) !important;
+    color: var(--color-button-text) !important;
+    font-weight: 600 !important;
+  }
+  
+  .MuiTableRow-root:nth-of-type(odd) {
+    background-color: var(--color-surface-alt);
+  }
+  
+  .MuiTableRow-root:hover {
+    background-color: var(--color-hover-light);
+  }
+  
+  .MuiTablePagination-toolbar {
+    background-color: var(--color-surface);
+    color: var(--color-text-light);
+  }
+  
+  .MuiTablePagination-selectLabel,
+  .MuiTablePagination-displayedRows {
+    color: var(--color-text-light);
+  }
+  
+  .MuiIconButton-root {
+    color: var(--color-primary);
+  }
+  
+  .MuiIconButton-root:hover {
+    color: var(--color-primary-dark);
+  }
+  
+  .MuiPaper-root {
+    background-color: var(--color-surface);
+    color: var(--color-text-light);
+  }
+  
+  .MuiTypography-h6 {
+    color: var(--color-text-light);
+  }
+  

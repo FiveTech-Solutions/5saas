@@ -1,0 +1,159 @@
+.service-form-container {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    background-color: var(--color-background-light);
+    border-radius: 8px;
+    box-shadow: var(--shadow-elevation-low);
+  }
+  
+  .service-form-container .form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .service-form-container .form-header h2 {
+    color: var(--color-primary);
+    margin: 0;
+  }
+  
+  .service-form-container .form-section {
+    background-color: var(--color-surface);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-elevation-low);
+  }
+  
+  .service-form-container .form-section h3 {
+    color: var(--color-text-dark);
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+  }
+  
+  .service-form-container .form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+  }
+  
+  .service-form-container .form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .service-form-container .form-group label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--color-text-dark);
+  }
+  
+  .service-form-container .form-group input[type="text"],
+  .service-form-container .form-group input[type="number"],
+  .service-form-container .form-group select,
+  .service-form-container .form-group textarea {
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    font-size: 1rem;
+    color: var(--color-text-light);
+    background-color: var(--color-input-background);
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+  
+  .service-form-container .form-group input[type="text"]:focus,
+  .service-form-container .form-group input[type="number"]:focus,
+  .service-form-container .form-group select:focus,
+  .service-form-container .form-group textarea:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.2);
+    outline: none;
+  }
+  
+  .service-form-container .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .service-form-container .form-group input[type="checkbox"] {
+    margin-top: 10px;
+    transform: scale(1.2);
+  }
+  
+  .service-form-container .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  
+  .service-form-container .btn-primary,
+  .service-form-container .btn-secondary {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+  
+  .service-form-container .btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-button-text);
+  }
+  
+  .service-form-container .btn-primary:hover {
+    background-color: var(--color-primary-dark);
+    box-shadow: var(--shadow-elevation-medium);
+  }
+  
+  .service-form-container .btn-primary:disabled {
+    background-color: var(--color-button-disabled);
+    cursor: not-allowed;
+  }
+  
+  .service-form-container .btn-secondary {
+    background-color: var(--color-secondary);
+    color: var(--color-button-text);
+  }
+  
+  .service-form-container .btn-secondary:hover {
+    background-color: var(--color-secondary-dark);
+    box-shadow: var(--shadow-elevation-medium);
+  }
+  
+  .service-form-container .alert {
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+  }
+  
+  .service-form-container .alert-error {
+    background-color: var(--color-error-light);
+    color: var(--color-error-dark);
+    border: 1px solid var(--color-error-dark);
+  }
+  
+  .service-form-container .alert-success {
+    background-color: var(--color-success-light);
+    color: var(--color-success-dark);
+    border: 1px solid var(--color-success-dark);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .service-form-container .form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+  }
+  
