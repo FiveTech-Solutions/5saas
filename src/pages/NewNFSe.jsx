@@ -64,17 +64,12 @@ const NewNFSe = () => {
   });
 
   const { ref: servicoValorInputRef, maskRef: servicoValorMaskRef } = useIMask({
-    mask: 'R$ num',
-    blocks: {
-      num: {
-        mask: Number,
-        thousandsSeparator: '.',
-        padFractionalZeros: true,
-        normalizeZeros: true,
-        radix: ',',
-        scale: 2,
-      },
-    },
+    mask: Number,
+    scale: 2,
+    thousandsSeparator: '.',
+    padFractionalZeros: true,
+    normalizeZeros: true,
+    radix: ',',
     lazy: false,
     unmask: true,
   });
