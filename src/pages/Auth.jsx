@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { login, signup } from '../services/userService';
+import { useAuth } from '../contexts/AuthContext';
 import CookieConsent from '../components/CookieConsent';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import './Auth.css';
@@ -15,6 +17,18 @@ const Auth = () => {
   const [message, setMessage] = useState(null);
   const [isPolicyModalOpen, setPolicyModalOpen] = useState(false);
 
+  const navigate = useNavigate();
+  const { refreshUser, isAuthenticated, loading: authLoading } = useAuth();
+
+  // Redirecionar se já estiver autenticado
+  useEffect(() => {
+    console.log('Auth Debug:', { isAuthenticated, authLoading });
+    if (!authLoading && isAuthenticated) {
+      console.log('Redirecting to home...');
+      navigate('/');
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
   const handleAuth = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -23,16 +37,30 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        await signup(name, email, password, companyName);
-        setMessage('Cadastro realizado com sucesso! Você já pode fazer login.');
-        setIsSignUp(false);
+        const result = await signup(name, email, password, companyName);
+        
+        if (result.user) {
+          setMessage('Conta criada com sucesso! Você já pode fazer login.');
+          setIsSignUp(false);
+          // Limpar campos
+          setName('');
+          setPassword('');
+          setCompanyName('');
+        } else {
+          setMessage('Conta criada! Verifique seu email para confirmar a conta.');
+        }
       } else {
-        await login(email, password);
-        // For manual auth, we need to force a reload or redirect to update the app state
-        window.location.reload();
+        const result = await login(email, password);
+        if (result && result.user) {
+          // Aguardar um pouco para o AuthContext processar a mudança
+          setTimeout(() => {
+            navigate('/');
+          }, 100);
+        }
       }
     } catch (error) {
-      setError(error.message || 'Ocorreu um erro.');
+      console.error('Erro na autenticação:', error);
+      setError(error.message || 'Ocorreu um erro durante a autenticação.');
     } finally {
       setLoading(false);
     }
@@ -41,6 +69,19 @@ const Auth = () => {
   const openPolicyModal = () => setPolicyModalOpen(true);
   const closePolicyModal = () => setPolicyModalOpen(false);
 
+  // Mostrar loading enquanto verifica autenticação
+  if (authLoading) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div>Verificando autenticação...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -48,11 +89,12 @@ const Auth = () => {
         <p className="auth-subtitle">
           {isSignUp ? 'Junte-se a nós!' : 'Bem-vindo de volta!'}
         </p>
+        
         <form onSubmit={handleAuth}>
           {isSignUp && (
             <>
               <div className="input-group">
-                <label htmlFor="name">Nome</label>
+                <label htmlFor="name">Nome Completo</label>
                 <input
                   id="name"
                   type="text"
@@ -75,6 +117,7 @@ const Auth = () => {
               </div>
             </>
           )}
+          
           <div className="input-group">
             <label htmlFor="email">Email</label>
             <input
@@ -86,6 +129,7 @@ const Auth = () => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+          
           <div className="input-group">
             <label htmlFor="password">Senha</label>
             <input
@@ -94,33 +138,84 @@ const Auth = () => {
               placeholder="••••••••"
               value={password}
               required
+              minLength={6}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <button type="submit" className="btn-primary auth-button" disabled={loading}>
-            {loading ? 'Carregando...' : (isSignUp ? 'Cadastrar' : 'Entrar')}
+
+          {error && (
+            <div className="auth-error">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="auth-message">
+              ✅ {message}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            className="btn-primary auth-button" 
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="loading-text">
+                {isSignUp ? 'Criando conta...' : 'Entrando...'}
+              </span>
+            ) : (
+              isSignUp ? 'Criar Conta' : 'Entrar'
+            )}
           </button>
         </form>
-        {error && <p className="auth-error">{error}</p>}
-        {message && <p className="auth-message">{message}</p>}
+
         <div className="auth-toggle">
-          <p>
-            {isSignUp ? 'Já tem uma conta?' : 'Não tem uma conta?'}
-            <button
-              className="toggle-button"
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setError(null);
-                setMessage(null);
-              }}
-            >
-              {isSignUp ? 'Faça Login' : 'Cadastre-se'}
-            </button>
-          </p>
+          {isSignUp ? (
+            <p>
+              Já tem uma conta?{' '}
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsSignUp(false);
+                  setError(null);
+                  setMessage(null);
+                }}
+                className="link-button"
+              >
+                Fazer Login
+              </button>
+            </p>
+          ) : (
+            <p>
+              Não tem uma conta?{' '}
+              <button 
+                type="button" 
+                onClick={() => {
+                  setIsSignUp(true);
+                  setError(null);
+                  setMessage(null);
+                }}
+                className="link-button"
+              >
+                Criar Conta
+              </button>
+            </p>
+          )}
+        </div>
+
+        <div className="auth-footer">
+          <button onClick={openPolicyModal} className="link-button">
+            Política de Privacidade
+          </button>
         </div>
       </div>
-      <CookieConsent onPolicyClick={openPolicyModal} />
-      {isPolicyModalOpen && <PrivacyPolicyModal onClose={closePolicyModal} />}
+
+      <CookieConsent />
+      
+      {isPolicyModalOpen && (
+        <PrivacyPolicyModal onClose={closePolicyModal} />
+      )}
     </div>
   );
 };

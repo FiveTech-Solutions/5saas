@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode';
-import { logout as logoutService } from '../services/userService';
+import { supabase } from '../services/supabase';
+import { getUserProfile, logUserAction } from '../services/userService';
 
 const AuthContext = createContext(null);
 
@@ -10,52 +10,137 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('supabase.token');
-      if (token) {
-        const decodedToken = jwtDecode(token);
-        // Check if token is expired
-        if (decodedToken.exp * 1000 > Date.now()) {
-          const userData = {
-            id: decodedToken.sub,
-            email: decodedToken.email,
-            role: decodedToken.role,
-            company_id: decodedToken.company_id
-          };
-          setUser(userData);
-          setIsAuthenticated(true);
-        } else {
-          // Token is expired
-          localStorage.removeItem('supabase.token');
+    // Obter sessão atual
+    const getSession = async () => {
+      setLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Buscar perfil completo do usuário
+          const profile = await getUserProfile(session.user.id);
+          
+          if (profile) {
+            setUser({
+              id: session.user.id,
+              email: session.user.email,
+              ...profile
+            });
+            setIsAuthenticated(true);
+          }
         }
+      } catch (error) {
+        console.error('Erro ao obter sessão:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error processing token:', error);
-      localStorage.removeItem('supabase.token');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    getSession();
+
+    // Escutar mudanças na autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth State Change:', event, session?.user?.id);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          try {
+            // Log do login
+            await logUserAction('login');
+            
+            // Buscar perfil completo
+            const profile = await getUserProfile(session.user.id);
+            console.log('Profile loaded:', profile);
+            
+            if (profile) {
+              const userData = {
+                id: session.user.id,
+                email: session.user.email,
+                ...profile
+              };
+              console.log('Setting user:', userData);
+              setUser(userData);
+              setIsAuthenticated(true);
+            }
+          } catch (error) {
+            console.error('Erro ao processar login:', error);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          setUser(null);
+          setIsAuthenticated(false);
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          // Atualizar dados do usuário quando token for renovado
+          try {
+            const profile = await getUserProfile(session.user.id);
+            if (profile) {
+              setUser({
+                id: session.user.id,
+                email: session.user.email,
+                ...profile
+              });
+            }
+          } catch (error) {
+            console.error('Erro ao atualizar perfil:', error);
+          }
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const logout = async () => {
-    await logoutService();
-    setUser(null);
-    setIsAuthenticated(false);
-    // Optional: redirect to login page
-    window.location.href = '/';
+    try {
+      await logUserAction('logout');
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Erro no logout:', error);
+      }
+      
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      if (user?.id) {
+        const profile = await getUserProfile(user.id);
+        if (profile) {
+          setUser({
+            id: user.id,
+            email: user.email,
+            ...profile
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error);
+    }
   };
 
   const value = {
     user,
     isAuthenticated,
+    loading,
     logout,
-    profile: user
+    refreshUser,
+    profile: user, // Mantido para compatibilidade
+    
+    // Funções auxiliares
+    setUser,
+    setIsAuthenticated
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

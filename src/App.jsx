@@ -16,10 +16,26 @@ import AuditoriaSimplesNacional from './pages/AuditoriaSimplesNacional';
 import AuditoriaAutosInfracao from './pages/AuditoriaAutosInfracao';
 import DividaAtiva from './pages/DividaAtiva';
 import MinhasNFSe from './pages/MinhasNFSe';
+import AdminTools from './components/AdminTools'; // Temporário para atualizar usuário
 import './App.css';
 
 function App() {
-  const { session, profile } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
+
+  // Mostrar loading enquanto verifica autenticação
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px'
+      }}>
+        Carregando...
+      </div>
+    );
+  }
 
   // A simple router wrapper for protected routes
   const ProtectedRoutes = () => (
@@ -37,25 +53,28 @@ function App() {
         <Route path="/divida-ativa" element={<DividaAtiva />} />
         
         {/* Admin Routes */}
-        <Route 
-          path="/admin/usuarios" 
-          element={profile?.role === 'admin' ? <UserManagement /> : <Navigate to="/" />}
+        <Route
+          path="/admin/company"
+          element={user?.user_role === 'administrador' ? <CompanySettings /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/admin/users"
+          element={user?.user_role === 'administrador' ? <UserManagement /> : <Navigate to="/" />}
         />
         <Route
           path="/admin/parametros"
-          element={profile?.role === 'admin' ? <AdminParametros /> : <Navigate to="/" />}
+          element={user?.user_role === 'administrador' ? <AdminParametros /> : <Navigate to="/" />}
         />
 
         {/* Auditor Routes */}
         <Route
           path="/auditoria/simples-nacional"
-          element={profile?.role === 'auditor' ? <AuditoriaSimplesNacional /> : <Navigate to="/" />}
+          element={user?.user_role === 'auditor' ? <AuditoriaSimplesNacional /> : <Navigate to="/" />}
         />
         <Route
           path="/auditoria/autos-infracao"
-          element={profile?.role === 'auditor' ? <AuditoriaAutosInfracao /> : <Navigate to="/" />}
+          element={user?.user_role === 'auditor' ? <AuditoriaAutosInfracao /> : <Navigate to="/" />}
         />
-
 
         {/* Redirect any other path to home */}
         <Route path="*" element={<Navigate to="/" />} />
@@ -65,7 +84,7 @@ function App() {
 
   return (
     <Router>
-      {session ? <ProtectedRoutes /> : <Auth />}
+      {isAuthenticated ? <ProtectedRoutes /> : <Auth />}
     </Router>
   );
 }

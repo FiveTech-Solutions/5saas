@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAuthorization } from '../hooks/useAuthorization';
 import './Sidebar.css';
 import {
   Description,
@@ -14,62 +15,160 @@ import {
   Search,
   AttachMoney,
   ListAlt,
+  AdminPanelSettings,
+  Gavel,
+  Assessment,
+  ExpandLess,
+  ExpandMore,
 } from '@mui/icons-material';
 
 const Sidebar = () => {
-  const { logout, profile } = useAuth();
+  const { logout, user } = useAuth();
+  const { 
+    getUserProfile, 
+    getAvailableRoutes,
+    canManageUsers,
+    canAudit,
+    canEmitNFSe,
+    canManageParameters,
+    canManageDebt
+  } = useAuthorization();
   const navigate = useNavigate();
   
-    const handleLogout = async () => {
+  // State para controlar quais seções estão abertas
+  // Por padrão, todas as seções começam colapsadas para melhor UX
+  const [collapsedSections, setCollapsedSections] = useState(
+    new Set(['NFS-e', 'Serviços Tomados', 'DES-IF', 'Administração', 'Auditoria', 'Dívida Ativa', 'Configurações'])
+  );
+  
+  const userProfile = getUserProfile();
+  
+  console.log('Sidebar Debug:', {
+    user,
+    userProfile,
+    canManageUsers: canManageUsers(),
+    canAudit: canAudit(),
+    canEmitNFSe: canEmitNFSe(),
+    canManageParameters: canManageParameters(),
+    canManageDebt: canManageDebt()
+  });
+  
+  const handleLogout = async () => {
     await logout();
     navigate('/auth');
   };
 
-  const navLinks = {
-    'NFS-e': [
-      { to: '/', text: 'Dashboard', icon: <Description /> },
-      { to: '/nfse', text: 'Minhas NFS-e', icon: <ListAlt /> },
-      { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> },
-    ],
-    'Serviços Tomados': [
-      { to: '/servicos-tomados', text: 'Lançamentos', icon: <Build /> },
-    ],
-    'DES-IF': [
-      { to: '/des-if', text: 'Declaração', icon: <AccountBalance /> },
-    ],
-    'Administração': [
-      { to: '/admin/usuarios', text: 'Usuários', icon: <People />, role: 'admin' },
-      { to: '/admin/parametros', text: 'Parâmetros', icon: <Settings />, role: 'admin' },
-    ],
-    'Auditoria': [
-      { to: '/auditoria/simples-nacional', text: 'Simples Nacional', icon: <Search />, role: 'auditor' },
-      { to: '/auditoria/autos-infracao', text: 'Autos de Infração', icon: <Search />, role: 'auditor' },
-    ],
-    'Dívida Ativa': [
-      { to: '/divida-ativa', text: 'Controle', icon: <AttachMoney />, role: 'auditor' },
-    ],
-    'Configurações': [
-      { to: '/clientes', text: 'Clientes', icon: <TrendingUp /> },
-      { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
-      { to: '/settings', text: 'Minha Conta', icon: <Settings /> },
-    ],
+  // Função para toggle do colapso de seções
+  const toggleSection = (sectionName) => {
+    const newCollapsed = new Set(collapsedSections);
+    if (newCollapsed.has(sectionName)) {
+      newCollapsed.delete(sectionName);
+    } else {
+      newCollapsed.add(sectionName);
+    }
+    setCollapsedSections(newCollapsed);
   };
+
+  // Definição dos módulos com base em permissões
+  const getNavLinks = () => {
+    const links = {
+      'NFS-e': [],
+      'Serviços Tomados': [],
+      'DES-IF': [],
+      'Administração': [],
+      'Auditoria': [],
+      'Dívida Ativa': [],
+      'Configurações': [
+        { to: '/clientes', text: 'Clientes', icon: <TrendingUp /> },
+        { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
+        { to: '/settings', text: 'Minha Conta', icon: <Settings /> },
+      ],
+    };
+
+    // Dashboard sempre disponível
+    links['NFS-e'].push({ to: '/', text: 'Dashboard', icon: <Description /> });
+
+    // NFS-e para admin e operador
+    if (canEmitNFSe()) {
+      links['NFS-e'].push(
+        { to: '/nfse', text: 'Minhas NFS-e', icon: <ListAlt /> },
+        { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> }
+      );
+    }
+
+    // Serviços tomados para admin e operador
+    if (canEmitNFSe()) {
+      links['Serviços Tomados'].push(
+        { to: '/servicos-tomados', text: 'Lançamentos', icon: <Build /> }
+      );
+    }
+
+    // DES-IF para admin e operador
+    if (canEmitNFSe()) {
+      links['DES-IF'].push(
+        { to: '/des-if', text: 'Declaração', icon: <AccountBalance /> }
+      );
+    }
+
+    // Administração apenas para admin
+    if (canManageUsers()) {
+      links['Administração'].push(
+        { to: '/admin/users', text: 'Usuários', icon: <People /> }
+      );
+    }
+    
+    if (canManageParameters()) {
+      links['Administração'].push(
+        { to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> }
+      );
+    }
+
+    // Auditoria para admin e auditor
+    if (canAudit()) {
+      links['Auditoria'].push(
+        { to: '/auditoria/simples-nacional', text: 'Simples Nacional', icon: <Assessment /> },
+        { to: '/auditoria/autos-infracao', text: 'Autos de Infração', icon: <Gavel /> }
+      );
+    }
+
+    // Dívida ativa para admin e auditor
+    if (canManageDebt()) {
+      links['Dívida Ativa'].push(
+        { to: '/divida-ativa', text: 'Controle', icon: <AttachMoney /> }
+      );
+    }
+
+    // Filtrar módulos vazios
+    return Object.fromEntries(
+      Object.entries(links).filter(([_, moduleLinks]) => moduleLinks.length > 0)
+    );
+  };
+
+  const navLinks = getNavLinks();
 
   const renderNavLinks = () => {
     return Object.entries(navLinks).map(([module, links]) => {
-      const filteredLinks = links.filter(link => !link.role || link.role === profile?.role);
-      if (filteredLinks.length === 0) {
-        return null;
-      }
+      const isCollapsed = collapsedSections.has(module);
+      
       return (
         <div key={module} className="sidebar-module">
-          <h3 className="sidebar-module-title">{module}</h3>
-          {filteredLinks.map((link) => (
-            <NavLink key={link.to} to={link.to} className="sidebar-link">
-              {link.icon}
-              <span>{link.text}</span>
-            </NavLink>
-          ))}
+          <div 
+            className="sidebar-module-header clickable"
+            onClick={() => toggleSection(module)}
+          >
+            <h3 className="sidebar-module-title">{module}</h3>
+            <div className="sidebar-toggle-icon">
+              {isCollapsed ? <ExpandMore /> : <ExpandLess />}
+            </div>
+          </div>
+          <div className={`sidebar-module-links ${isCollapsed ? 'collapsed' : 'expanded'}`}>
+            {links.map((link) => (
+              <NavLink key={link.to} to={link.to} className="sidebar-link">
+                {link.icon}
+                <span>{link.text}</span>
+              </NavLink>
+            ))}
+          </div>
         </div>
       );
     });
@@ -86,7 +185,14 @@ const Sidebar = () => {
       </nav>
       <div className="sidebar-footer">
         <div className="user-profile">
-          <span>{profile?.email || 'Usuário'}</span>
+          <div className="user-info">
+            <span className="user-email">{user?.email || 'Usuário'}</span>
+            {userProfile && (
+              <span className={`user-role role-${user?.role}`}>
+                {userProfile.name}
+              </span>
+            )}
+          </div>
         </div>
         <button onClick={handleLogout} className="logout-button">
           Sair

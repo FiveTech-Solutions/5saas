@@ -6,9 +6,13 @@ const Footer = () => {
   return (
     <footer className="footer">
       <div className="footer-content">
-        <p>&copy; {new Date().getFullYear()} SAQUETE SERVIÇOS EMPRESARIAIS LTDA</p>
-        <p>CNPJ: 47.793.601/0001-62</p>
-        <p>Versão: {packageJson.version}</p>
+        <div className="footer-left">
+          <span className="company-name">SAQUETE SERVIÇOS EMPRESARIAIS LTDA</span>
+          <span className="copyright">© {new Date().getFullYear()}</span>
+        </div>
+        <div className="footer-right">
+          <span className="version">v{packageJson.version}</span>
+        </div>
       </div>
     </footer>
   );

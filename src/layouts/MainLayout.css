@@ -15,4 +15,5 @@
 .main-content {
   flex-grow: 1; /* This makes the content area expand */
   padding: 2rem;
+  padding-bottom: 60px; /* Espaço para o footer fixo */
 }
