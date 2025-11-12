@@ -85,7 +85,7 @@ const Auth = () => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1 className="auth-title">{isSignUp ? 'Criar Conta' : 'Login'}</h1>
+        <h1 className="auth-title">{isSignUp ? 'Criar Conta' : 'Five-SaaS Login'}</h1>
         <p className="auth-subtitle">
           {isSignUp ? 'Junte-se a nós!' : 'Bem-vindo de volta!'}
         </p>
