@@ -8,7 +8,9 @@ import {
   enviarNotaPorEmail,
   cancelarNota
 } from '../services/nfseService';
+import { getNFSeDetails } from '../services/plugnotasService'; // Import getNFSeDetails
 import { useAuth } from '../contexts/AuthContext';
+import NFSeDetailsModal from '../components/NFSeDetailsModal'; // Import NFSeDetailsModal
 import './MinhasNFSe.css';
 import {
   Search,
@@ -53,6 +55,11 @@ const MinhasNFSe = () => {
   const [motivoCancelamento, setMotivoCancelamento] = useState('Cancelamento a pedido do Prestador');
   const [codigoCancelamento, setCodigoCancelamento] = useState('9');
   const [processandoAcao, setProcessandoAcao] = useState(false);
+
+  // Estados para o modal de detalhes da NFSe
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedNFSeDetails, setSelectedNFSeDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Opções de situação
   const situacoes = [
@@ -123,6 +130,22 @@ const MinhasNFSe = () => {
       setError('Erro ao cancelar nota: ' + error.message);
     } finally {
       setProcessandoAcao(false);
+    }
+  };
+
+  const handleViewDetails = async (nota) => {
+    setLoadingDetails(true);
+    setError('');
+    try {
+      // Use nota.id or nota.protocol as the identifier
+      const details = await getNFSeDetails(nota.id || nota.protocol);
+      setSelectedNFSeDetails(details);
+      setIsDetailsModalOpen(true);
+    } catch (err) {
+      setError('Erro ao carregar detalhes da NFS-e: ' + err.message);
+      console.error('Erro ao buscar detalhes da NFSe:', err);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -433,8 +456,10 @@ const MinhasNFSe = () => {
                   <button
                     className="btn-acao btn-visualizar"
                     title="Visualizar Detalhes"
+                    onClick={() => handleViewDetails(nota)}
+                    disabled={loadingDetails || processandoAcao}
                   >
-                    <Visibility />
+                    {loadingDetails ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <Visibility />}
                   </button>
 
                   <button
@@ -617,6 +642,12 @@ const MinhasNFSe = () => {
           </div>
         </div>
       )}
+      {/* NFSe Details Modal */}
+      <NFSeDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        nfseData={selectedNFSeDetails}
+      />
     </div>
   );
 };

@@ -45,3 +45,22 @@ export const registerCompanyWithPlugNotas = async (companyData) => {
     throw error;
   }
 };
+
+/**
+ * Fetches NFSe details from PlugNotas API using idNotaOrProtocol.
+ * @param {string} idNotaOrProtocol The ID or protocol of the NFSe to query.
+ * @returns {Promise<object>} The NFSe details from the PlugNotas API.
+ */
+export const getNFSeDetails = async (idNotaOrProtocol) => {
+  try {
+    const response = await api.get(`/nfse/${idNotaOrProtocol}`);
+    return response.data;
+  } catch (error) {
+    const apiError = error.response?.data;
+    if (apiError) {
+      const message = apiError.message || (apiError.erros && apiError.erros.join(', ')) || 'Erro desconhecido da API.';
+      throw new Error(`Falha ao consultar detalhes da NFS-e: ${message}`);
+    }
+    throw error;
+  }
+};

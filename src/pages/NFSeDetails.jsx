@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  getNFSe,
   getNFSePDF,
   getNFSeXML,
   cancelNFSe,
   sendNFSeByEmail,
 } from '../services/nfseService';
+import { getNFSeDetails } from '../services/plugnotasService'; // Import getNFSeDetails
 import { downloadFile, formatCurrency, formatDate } from '../utils/helpers';
 import './NFSeDetails.css';
 
@@ -29,7 +29,7 @@ const NFSeDetails = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getNFSe(id);
+        const data = await getNFSeDetails(id); // Use getNFSeDetails from plugnotasService
         setNfse(data);
       } catch (err) {
         console.error('Error loading NFS-e details:', err);
@@ -46,7 +46,7 @@ const NFSeDetails = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getNFSe(id);
+      const data = await getNFSeDetails(id); // Use getNFSeDetails from plugnotasService
       setNfse(data);
     } catch (err) {
       console.error('Error loading NFS-e details:', err);
@@ -59,7 +59,8 @@ const NFSeDetails = () => {
   const handleDownloadPDF = async () => {
     try {
       setActionLoading('pdf');
-      const blob = await getNFSePDF(id);
+      // Assuming getNFSePDF still works with the PlugNotas ID
+      const blob = await getNFSePDF(id); 
       downloadFile(blob, `nfse-${id}.pdf`);
     } catch (err) {
       console.error('Error downloading PDF:', err);
@@ -72,6 +73,7 @@ const NFSeDetails = () => {
   const handleDownloadXML = async () => {
     try {
       setActionLoading('xml');
+      // Assuming getNFSeXML still works with the PlugNotas ID
       const blob = await getNFSeXML(id);
       downloadFile(blob, `nfse-${id}.xml`);
     } catch (err) {
@@ -90,6 +92,7 @@ const NFSeDetails = () => {
 
     try {
       setActionLoading('email');
+      // Assuming sendNFSeByEmail still works with the PlugNotas ID
       await sendNFSeByEmail(id, emailData);
       alert('Email enviado com sucesso!');
       setShowEmailModal(false);
@@ -114,6 +117,7 @@ const NFSeDetails = () => {
 
     try {
       setActionLoading('cancel');
+      // Assuming cancelNFSe still works with the PlugNotas ID
       await cancelNFSe(id, { motivo: cancelReason });
       alert('NFS-e cancelada com sucesso!');
       setShowCancelModal(false);
@@ -128,6 +132,7 @@ const NFSeDetails = () => {
 
   const getStatusClass = (status) => {
     switch (status?.toLowerCase()) {
+      case 'concluido': // PlugNotas status
       case 'autorizado':
       case 'processado':
         return 'status-success';
@@ -174,7 +179,7 @@ const NFSeDetails = () => {
           <button className="btn-back" onClick={() => navigate('/')}>
             ← Voltar
           </button>
-          <h2>NFS-e #{nfse.numero || nfse.id}</h2>
+          <h2>NFS-e #{nfse.numeroNfse || nfse.id}</h2>
           <span className={`status-badge ${getStatusClass(nfse.status)}`}>
             {nfse.status || 'Processando'}
           </span>
@@ -187,24 +192,30 @@ const NFSeDetails = () => {
           <div className="info-grid">
             <div className="info-item">
               <label>Data de Emissão:</label>
-              <span>{formatDate(nfse.dataEmissao || nfse.createdAt)}</span>
+              <span>{formatDate(nfse.rps?.dataEmissao || nfse.dataEmissao)}</span>
             </div>
             <div className="info-item">
               <label>Valor Total:</label>
               <span className="value-highlight">
-                {formatCurrency(nfse.servico?.valorServicos || nfse.valor || 0)}
+                {formatCurrency(nfse.servico?.[0]?.valor?.servico || 0)}
               </span>
             </div>
-            {nfse.numero && (
+            {nfse.numeroNfse && (
               <div className="info-item">
                 <label>Número:</label>
-                <span>{nfse.numero}</span>
+                <span>{nfse.numeroNfse}</span>
               </div>
             )}
-            {nfse.codigoVerificacao && (
+            {nfse.retorno?.codigoVerificacao && (
               <div className="info-item">
                 <label>Código de Verificação:</label>
-                <span>{nfse.codigoVerificacao}</span>
+                <span>{nfse.retorno.codigoVerificacao}</span>
+              </div>
+            )}
+            {nfse.protocol && (
+              <div className="info-item">
+                <label>Protocolo:</label>
+                <span>{nfse.protocol}</span>
               </div>
             )}
           </div>
@@ -219,12 +230,24 @@ const NFSeDetails = () => {
             </div>
             <div className="info-item">
               <label>CNPJ:</label>
-              <span>{nfse.prestador?.cnpj || 'N/A'}</span>
+              <span>{nfse.prestador?.cpfCnpj || 'N/A'}</span>
             </div>
             <div className="info-item">
               <label>Inscrição Municipal:</label>
               <span>{nfse.prestador?.inscricaoMunicipal || 'N/A'}</span>
             </div>
+            {nfse.prestador?.email && (
+              <div className="info-item">
+                <label>Email:</label>
+                <span>{nfse.prestador.email}</span>
+              </div>
+            )}
+            {nfse.prestador?.telefone && (
+              <div className="info-item">
+                <label>Telefone:</label>
+                <span>({nfse.prestador.telefone.ddd}) {nfse.prestador.telefone.numero}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -233,7 +256,7 @@ const NFSeDetails = () => {
           <div className="info-grid">
             <div className="info-item">
               <label>Nome/Razão Social:</label>
-              <span>{nfse.tomador?.razaoSocial || nfse.tomador?.nome || 'N/A'}</span>
+              <span>{nfse.tomador?.razaoSocial || nfse.tomador?.nomeFantasia || 'N/A'}</span>
             </div>
             <div className="info-item">
               <label>CPF/CNPJ:</label>
@@ -250,7 +273,7 @@ const NFSeDetails = () => {
                   {nfse.tomador.endereco.logradouro}, {nfse.tomador.endereco.numero}
                   {nfse.tomador.endereco.complemento && ` - ${nfse.tomador.endereco.complemento}`}
                   {' - '}{nfse.tomador.endereco.bairro}
-                  {' - '}{nfse.tomador.endereco.uf}
+                  {' - '}{nfse.tomador.endereco.descricaoCidade} - {nfse.tomador.endereco.estado}
                   {' - '}{nfse.tomador.endereco.cep}
                 </span>
               </div>
@@ -263,19 +286,27 @@ const NFSeDetails = () => {
           <div className="info-grid">
             <div className="info-item full-width">
               <label>Discriminação:</label>
-              <span>{nfse.servico?.discriminacao || 'N/A'}</span>
+              <span>{nfse.servico?.[0]?.discriminacao || 'N/A'}</span>
+            </div>
+            <div className="info-item">
+              <label>Código do Serviço:</label>
+              <span>{nfse.servico?.[0]?.codigo || 'N/A'}</span>
+            </div>
+            <div className="info-item">
+              <label>CNAE:</label>
+              <span>{nfse.servico?.[0]?.cnae || 'N/A'}</span>
             </div>
             <div className="info-item">
               <label>Valor dos Serviços:</label>
-              <span>{formatCurrency(nfse.servico?.valorServicos || 0)}</span>
+              <span>{formatCurrency(nfse.servico?.[0]?.valor?.servico || 0)}</span>
             </div>
             <div className="info-item">
-              <label>Alíquota:</label>
-              <span>{nfse.servico?.aliquota || 0}%</span>
+              <label>Alíquota ISS:</label>
+              <span>{nfse.servico?.[0]?.iss?.aliquota || 0}%</span>
             </div>
             <div className="info-item">
               <label>ISS Retido:</label>
-              <span>{nfse.servico?.issRetido ? 'Sim' : 'Não'}</span>
+              <span>{nfse.servico?.[0]?.iss?.retido ? 'Sim' : 'Não'}</span>
             </div>
           </div>
         </div>

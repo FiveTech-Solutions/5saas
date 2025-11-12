@@ -153,7 +153,7 @@ const Sidebar = () => {
           </div>
           <div className={`sidebar-module-links ${isCollapsed ? 'collapsed' : 'expanded'}`}>
             {links.map((link) => (
-              <NavLink key={link.to} to={link.to} className="sidebar-link">
+              <NavLink key={link.to} to={link.to} end={link.to === '/nfse'} className="sidebar-link">
                 {link.icon}
                 <span>{link.text}</span>
               </NavLink>

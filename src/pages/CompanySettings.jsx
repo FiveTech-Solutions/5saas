@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { getCompany } from '../services/companyService';
 import { registerCompanyWithPlugNotas, getCompanyDetailsByCnpj } from '../services/plugnotasService';
 import { getAddressFromCEP } from '../services/viaCepService';
@@ -278,19 +279,19 @@ const CompanySettings = () => {
         <section className="form-section">
           <h3>Identificação</h3>
           <div className="form-row">
-            <div className="form-group"><label>CNPJ</label><input type="text" value={formData.cpf_cnpj} onBlur={handleCnpjBlur} onChange={e => handleInputChange('cpf_cnpj', e.target.value)} required /></div>
-            <div className="form-group"><label>Razão Social</label><input type="text" value={formData.razao_social} onChange={e => handleInputChange('razao_social', e.target.value)} required /></div>
+            <div className="form-group"><label>CNPJ</label><input type="text" value={formData.cpf_cnpj} onBlur={handleCnpjBlur} onChange={e => handleInputChange('cpf_cnpj', e.target.value)} required disabled className="readonly-input" /></div>
+            <div className="form-group"><label>Razão Social</label><input type="text" value={formData.razao_social} onChange={e => handleInputChange('razao_social', e.target.value)} required disabled className="readonly-input" /></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Nome Fantasia</label><input type="text" value={formData.nome_fantasia} onChange={e => handleInputChange('nome_fantasia', e.target.value)} /></div>
-            <div className="form-group"><label>Inscrição Municipal</label><input type="text" value={formData.inscricao_municipal} onChange={e => handleInputChange('inscricao_municipal', e.target.value)} /></div>
+            <div className="form-group"><label>Nome Fantasia</label><input type="text" value={formData.nome_fantasia} onChange={e => handleInputChange('nome_fantasia', e.target.value)} disabled className="readonly-input" /></div>
+            <div className="form-group"><label>Inscrição Municipal</label><input type="text" value={formData.inscricao_municipal} onChange={e => handleInputChange('inscricao_municipal', e.target.value)} disabled className="readonly-input" /></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Inscrição Estadual</label><input type="text" value={formData.inscricao_estadual} onChange={e => handleInputChange('inscricao_estadual', e.target.value)} /></div>
-            <div className="form-group"><label>Telefone (com DDD)</label><input type="text" value={formData.telefone} onChange={e => handleInputChange('telefone', e.target.value)} /></div>
+            <div className="form-group"><label>Inscrição Estadual</label><input type="text" value={formData.inscricao_estadual} onChange={e => handleInputChange('inscricao_estadual', e.target.value)} disabled className="readonly-input" /></div>
+            <div className="form-group"><label>Telefone (com DDD)</label><input type="text" value={formData.telefone} onChange={e => handleInputChange('telefone', e.target.value)} disabled className="readonly-input" /></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Email</label><input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} required /></div>
+            <div className="form-group"><label>Email</label><input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} required disabled className="readonly-input" /></div>
           </div>
         </section>
 
@@ -298,17 +299,17 @@ const CompanySettings = () => {
         <section className="form-section">
           <h3>Endereço</h3>
            <div className="form-row">
-            <div className="form-group"><label>CEP</label><input type="text" value={formData.endereco.cep} onBlur={e => handleCepBlur(e.target.value)} onChange={e => handleAddressChange('cep', e.target.value)} /></div>
-            <div className="form-group"><label>Cidade</label><input type="text" value={formData.endereco.cidade} onChange={e => handleAddressChange('cidade', e.target.value)} /></div>
-            <div className="form-group"><label>UF</label><input type="text" maxLength="2" value={formData.endereco.estado} onChange={e => handleAddressChange('estado', e.target.value)} /></div>
+            <div className="form-group"><label>CEP</label><input type="text" value={formData.endereco.cep} onBlur={e => handleCepBlur(e.target.value)} onChange={e => handleAddressChange('cep', e.target.value)} disabled className="readonly-input" /></div>
+            <div className="form-group"><label>Cidade</label><input type="text" value={formData.endereco.cidade} onChange={e => handleAddressChange('cidade', e.target.value)} disabled className="readonly-input" /></div>
+            <div className="form-group"><label>UF</label><input type="text" maxLength="2" value={formData.endereco.estado} onChange={e => handleAddressChange('estado', e.target.value)} disabled className="readonly-input" /></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Logradouro</label><input type="text" className="flex-2" value={formData.endereco.logradouro} onChange={e => handleAddressChange('logradouro', e.target.value)} /></div>
-            <div className="form-group"><label>Número</label><input type="text" value={formData.endereco.numero} onChange={e => handleAddressChange('numero', e.target.value)} /></div>
+            <div className="form-group"><label>Logradouro</label><input type="text" className="flex-2 readonly-input" value={formData.endereco.logradouro} onChange={e => handleAddressChange('logradouro', e.target.value)} disabled /></div>
+            <div className="form-group"><label>Número</label><input type="text" value={formData.endereco.numero} onChange={e => handleAddressChange('numero', e.target.value)} disabled className="readonly-input" /></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Bairro</label><input type="text" value={formData.endereco.bairro} onChange={e => handleAddressChange('bairro', e.target.value)} /></div>
-            <div className="form-group"><label>Complemento</label><input type="text" value={formData.endereco.complemento} onChange={e => handleAddressChange('complemento', e.target.value)} /></div>
+            <div className="form-group"><label>Bairro</label><input type="text" value={formData.endereco.bairro} onChange={e => handleAddressChange('bairro', e.target.value)} disabled className="readonly-input" /></div>
+            <div className="form-group"><label>Complemento</label><input type="text" value={formData.endereco.complemento} onChange={e => handleAddressChange('complemento', e.target.value)} disabled className="readonly-input" /></div>
           </div>
         </section>
 
