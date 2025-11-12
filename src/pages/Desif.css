@@ -1,0 +1,168 @@
+.desif-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: var(--color-background-light);
+    border-radius: 8px;
+    box-shadow: var(--shadow-elevation-low);
+  }
+  
+  .desif-header {
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .desif-header h1 {
+    color: var(--color-primary);
+    margin: 0;
+    font-size: 2rem;
+  }
+  
+  .desif-form-section,
+  .desif-list-section {
+    background-color: var(--color-surface);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-elevation-low);
+  }
+  
+  .desif-form-section h2,
+  .desif-list-section h2 {
+    color: var(--color-text-dark);
+    margin-top: 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+  }
+  
+  .desif-form .form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .desif-form .form-group {
+    flex: 1;
+    margin-bottom: 15px;
+  }
+  
+  .desif-form .file-upload-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .desif-form .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+  
+  /* Material-UI overrides */
+  .MuiFormControl-root {
+    width: 100%;
+  }
+  
+  .MuiInputLabel-root {
+    color: var(--color-text-light) !important;
+  }
+  
+  .MuiOutlinedInput-root {
+    background-color: var(--color-input-background) !important;
+    color: var(--color-text-light) !important;
+  }
+  
+  .MuiOutlinedInput-notchedOutline {
+    border-color: var(--color-border) !important;
+  }
+  
+  .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-color: var(--color-primary) !important;
+  }
+  
+  .MuiButton-containedPrimary {
+    background-color: var(--color-primary) !important;
+    color: var(--color-button-text) !important;
+  }
+  
+  .MuiButton-containedPrimary:hover {
+    background-color: var(--color-primary-dark) !important;
+  }
+  
+  .MuiTableCell-head {
+    background-color: var(--color-primary-light) !important;
+    color: var(--color-button-text) !important;
+    font-weight: 600 !important;
+  }
+  
+  .MuiTableRow-root:nth-of-type(odd) {
+    background-color: var(--color-surface-alt);
+  }
+  
+  .MuiTableRow-root:hover {
+    background-color: var(--color-hover-light);
+  }
+  
+  .MuiTablePagination-toolbar {
+    background-color: var(--color-surface);
+    color: var(--color-text-light);
+  }
+  
+  .MuiTablePagination-selectLabel,
+  .MuiTablePagination-displayedRows {
+    color: var(--color-text-light);
+  }
+  
+  .MuiIconButton-root {
+    color: var(--color-primary);
+  }
+  
+  .MuiIconButton-root:hover {
+    color: var(--color-primary-dark);
+  }
+  
+  .MuiPaper-root {
+    background-color: var(--color-surface);
+    color: var(--color-text-light);
+  }
+  
+  .MuiTypography-h6 {
+    color: var(--color-text-light);
+  }
+  
+  .alert {
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+  }
+  
+  .alert-error {
+    background-color: var(--color-error-light);
+    color: var(--color-error-dark);
+    border: 1px solid var(--color-error-dark);
+  }
+  
+  .alert-success {
+    background-color: var(--color-success-light);
+    color: var(--color-success-dark);
+    border: 1px solid var(--color-success-dark);
+  }
+  
+  .loading-state {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1rem;
+    color: var(--color-text-light);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .desif-form .form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+  }
+  
