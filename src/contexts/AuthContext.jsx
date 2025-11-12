@@ -13,46 +13,58 @@ export const AuthProvider = ({ children }) => {
     const getSession = async () => {
       setLoading(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+                  const { data: { session } } = await supabase.auth.getSession();
+                
+                if (session?.user) {
+                  const profile = await getUserProfile(session.user.id);
+                  if (profile && !profile.error) { // Check for error property
+                    setUser({ id: session.user.id, email: session.user.email, ...profile });
+                    setIsAuthenticated(true);
+                  } else {
+                    console.warn('Profile not found or error fetching profile:', profile?.error);
+                    setUser(null);
+                    setIsAuthenticated(false);
+                  }
+                }
+              } catch (error) {
+                console.error('Erro ao obter sessão:', error);
+                setUser(null);
+                setIsAuthenticated(false);
+              } finally {
+                setLoading(false);
+              }
+            };
         
-        if (session?.user) {
-          const profile = await getUserProfile(session.user.id);
-          if (profile) {
-            setUser({ id: session.user.id, email: session.user.email, ...profile });
-            setIsAuthenticated(true);
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao obter sessão:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setLoading(true);
-        if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await getUserProfile(session.user.id);
-          if (profile) {
-            setUser({ id: session.user.id, email: session.user.email, ...profile });
-            setIsAuthenticated(true);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setIsAuthenticated(false);
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          const profile = await getUserProfile(session.user.id);
-          if (profile) {
-            setUser({ id: session.user.id, email: session.user.email, ...profile });
-          }
-        }
-        setLoading(false);
-      }
-    );
-
+            getSession();
+        
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(
+              async (event, session) => {
+                setLoading(true);
+                if (event === 'SIGNED_IN' && session?.user) {
+                  const profile = await getUserProfile(session.user.id);
+                  if (profile && !profile.error) { // Check for error property
+                    setUser({ id: session.user.id, email: session.user.email, ...profile });
+                    setIsAuthenticated(true);
+                  } else {
+                    console.warn('Profile not found or error fetching profile on SIGNED_IN:', profile?.error);
+                    setUser(null);
+                    setIsAuthenticated(false);
+                  }
+                } else if (event === 'SIGNED_OUT') {
+                  setUser(null);
+                  setIsAuthenticated(false);
+                } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+                  const profile = await getUserProfile(session.user.id);
+                  if (profile && !profile.error) { // Check for error property
+                    setUser({ id: session.user.id, email: session.user.email, ...profile });
+                  } else {
+                    console.warn('Profile not found or error fetching profile on TOKEN_REFRESHED:', profile?.error);
+                    // Keep existing user state if refresh failed but user was already set
+                  }
+                }
+                setLoading(false);
+              }
+            );
     return () => subscription.unsubscribe();
   }, []);
 

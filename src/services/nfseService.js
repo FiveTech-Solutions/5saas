@@ -89,7 +89,7 @@ export const listNFSe = async (params = {}) => {
  */
 export const consultarNotasPorPeriodo = async (params) => {
   try {
-    const response = await api.get('/nfse', { params });
+    const response = await api.get('/nfse/consultar/periodo', { params });
     return response.data;
   } catch (error) {
     console.error('Erro ao consultar notas por período:', error);

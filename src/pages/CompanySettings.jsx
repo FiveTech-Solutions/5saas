@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getCompany, saveCompany } from '../services/companyService';
 import { registerCompanyWithPlugNotas } from '../services/plugnotasService';
 import { getAddressFromCEP } from '../services/viaCepService';
+import { keysToCamelCase } from '../utils/helpers'; // Import the helper
 // Certificate logic is temporarily simplified
 // import { uploadCertificate, getCertificates } from '../services/certificateService';
 import './CompanySettings.css';
@@ -24,6 +25,10 @@ const initialState = {
     cep: '', logradouro: '', numero: '', complemento: '',
     bairro: '', cidade: '', estado: '', codigo_cidade: '',
     tipoLogradouro: 'Rua', tipoBairro: 'Bairro',
+    // Added missing fields for PlugNotas API
+    codigoPais: '1058',
+    descricaoCidade: '', // Will be filled by ViaCEP or user
+    descricaoPais: 'Brasil',
   },
   // Simplified NFSe object with default config
   nfse: {
@@ -31,8 +36,37 @@ const initialState = {
     tipoContrato: 0,
     config: {
       producao: false, // Start in sandbox
-      rps: { numeracaoAutomatica: true },
+      nfseNacional: true, // Added from example
+      consultaNfseNacional: true, // Added from example
+      consultaDfe: { // Added from example
+        prestador: true,
+        tomador: true,
+        intermediario: true
+      },
+      rps: {
+        lote: 1, // Added from example
+        numeracao: [{ numero: 1, serie: "RPS" }], // Added from example
+        numeracaoAutomatica: true,
+        agrupaLoteAutomatico: true, // Added from example
+        agrupaLoteComSerieAutomatico: true // Added from example
+      },
+      prefeitura: { // Added from example
+        login: "teste",
+        senha: "teste123",
+        receitaBruta: 0,
+        lei: "string",
+        dataInicio: "2021-03-24"
+      },
       email: { envio: true },
+      calculoAutomaticoIbpt: { ativo: true }, // Added from example
+      enviarNotificacaoProcessamento: { // Added from example
+        webhook: true,
+        email: true,
+        destinatarios: [
+          "email-1@plugnotas.com.br",
+          "email-2@plugnotas.com.br"
+        ]
+      }
     }
   },
   // Add other document types with default 'ativo: false'
@@ -58,6 +92,57 @@ const CompanySettings = () => {
   // const [uploadingCertificate, setUploadingCertificate] = useState(false);
   // const [certificates, setCertificates] = useState([]);
 
+  const handleCnpjBlur = async (e) => {
+    const cnpj = e.target.value;
+    if (!cnpj || cnpj.replace(/\D/g, '').length < 14) return; // Basic validation
+
+    try {
+      setLoading(true); // Or a specific loading state for CNPJ lookup
+      const cleanedCnpj = cnpj.replace(/\D/g, ''); // Remove non-digits
+      const companyDetails = await getCompanyDetailsByCnpj(cleanedCnpj);
+
+      if (companyDetails && companyDetails.status === 'OK') {
+        setFormData(prev => ({
+          ...prev,
+          cpf_cnpj: companyDetails.cpf_cnpj || prev.cpf_cnpj,
+          razao_social: companyDetails.razao_social || prev.razao_social,
+          nome_fantasia: companyDetails.nome || prev.nome_fantasia,
+          email: companyDetails.email || prev.email,
+          // Format phone number to a single string for the form
+          telefone: companyDetails.telefone ? companyDetails.telefone.replace(/\D/g, '') : prev.telefone,
+          // Map address fields
+          endereco: {
+            ...prev.endereco,
+            cep: companyDetails.endereco.cep || prev.endereco.cep,
+            logradouro: companyDetails.endereco.logradouro || prev.endereco.logradouro,
+            numero: companyDetails.endereco.numero || prev.endereco.numero,
+            complemento: companyDetails.endereco.complemento || prev.endereco.complemento,
+            bairro: companyDetails.endereco.bairro || prev.endereco.bairro,
+            cidade: companyDetails.endereco.municipio || prev.endereco.cidade,
+            estado: companyDetails.endereco.uf || prev.endereco.estado,
+            descricaoCidade: companyDetails.endereco.municipio || prev.endereco.descricaoCidade,
+            // PlugNotas API doesn't provide IBGE code directly in this endpoint,
+            // so we might need to keep the existing ViaCEP logic for `codigo_cidade`
+            // or fetch it separately if `municipio` is not enough.
+            // For now, we'll rely on ViaCEP for `codigo_cidade` if CEP is also filled.
+          },
+          // Assuming default values for fiscal info if not provided by PlugNotas CNPJ lookup
+          // simples_nacional: companyDetails.simples_nacional !== undefined ? companyDetails.simples_nacional : prev.simples_nacional,
+          // regime_tributario: companyDetails.regime_tributario !== undefined ? companyDetails.regime_tributario : prev.regime_tributario,
+          // ... other fiscal fields if available in CNPJ lookup response
+        }));
+        setSuccess('Dados da empresa preenchidos automaticamente!');
+      } else if (companyDetails && companyDetails.status !== 'OK') {
+        setError(`Consulta CNPJ: ${companyDetails.message || 'Status não OK.'}`);
+      }
+    } catch (err) {
+      setError(err.message || 'Erro ao consultar CNPJ.');
+      console.error("Erro ao consultar CNPJ:", err);
+    } finally {
+      setLoading(false); // Or specific loading state
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -71,6 +156,11 @@ const CompanySettings = () => {
             ...company,
             endereco: { ...prev.endereco, ...(company.endereco || {}) },
             nfse: { ...prev.nfse, ...(company.nfse || {}) },
+            nfe: { ...prev.nfe, ...(company.nfe || {}) },
+            nfce: { ...prev.nfce, ...(company.nfce || {}) },
+            mdfe: { ...prev.mdfe, ...(company.mdfe || {}) },
+            cfe: { ...prev.cfe, ...(company.cfe || {}) },
+            nfcom: { ...prev.nfcom, ...(company.nfcom || {}) },
           }));
         }
       } catch (err) {
@@ -107,6 +197,7 @@ const CompanySettings = () => {
           cidade: address.localidade,
           estado: address.uf,
           codigo_cidade: address.ibge,
+          descricaoCidade: address.localidade, // Set descricaoCidade from ViaCEP
         },
       }));
     }
@@ -135,11 +226,18 @@ const CompanySettings = () => {
         numero: phoneString.substring(2),
       };
 
-      const apiPayload = {
+      // Construct the payload for PlugNotas API, converting keys to camelCase
+      const rawApiPayload = {
         ...formData,
         certificado: MOCKED_CERTIFICATE_ID, // Use mocked certificate
         telefone: telefonePayload, // Use parsed phone object
+        endereco: {
+          ...formData.endereco,
+          descricaoCidade: formData.endereco.cidade, // Ensure descricaoCidade is set
+        },
       };
+
+      const apiPayload = keysToCamelCase(rawApiPayload);
       
       const plugNotasResponse = await registerCompanyWithPlugNotas(apiPayload);
       setSuccess(`Empresa registrada com sucesso! Protocolo: ${plugNotasResponse.protocol || 'N/A'}`);
@@ -173,7 +271,7 @@ const CompanySettings = () => {
         <section className="form-section">
           <h3>Identificação</h3>
           <div className="form-row">
-            <div className="form-group"><label>CNPJ</label><input type="text" value={formData.cpf_cnpj} onChange={e => handleInputChange('cpf_cnpj', e.target.value)} required /></div>
+            <div className="form-group"><label>CNPJ</label><input type="text" value={formData.cpf_cnpj} onBlur={handleCnpjBlur} onChange={e => handleInputChange('cpf_cnpj', e.target.value)} required /></div>
             <div className="form-group"><label>Razão Social</label><input type="text" value={formData.razao_social} onChange={e => handleInputChange('razao_social', e.target.value)} required /></div>
           </div>
           <div className="form-row">

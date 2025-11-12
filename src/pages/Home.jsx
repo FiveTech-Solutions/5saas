@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Line, Doughnut } from 'react-chartjs-2';
+import { format, subDays } from 'date-fns';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,9 +13,9 @@ import {
   Legend,
   ArcElement,
 } from 'chart.js';
-import NFSeCard from '../components/NFSeCard';
-import { listNfses } from '../services/nfseSupabaseService';
+import { consultarNotasPorPeriodo } from '../services/nfseService'; // Importar o serviço correto
 import { useAuth } from '../contexts/AuthContext';
+import { formatCurrency, formatDate } from '../utils/helpers'; // Importar helpers
 import './Home.css';
 
 // Register Chart.js components
@@ -34,6 +35,20 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // Estados para filtros e paginação da API
+  const [filtros, setFiltros] = useState({
+    dataInicial: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+    dataFinal: format(new Date(), 'yyyy-MM-dd'),
+  });
+  const [paginacaoApi, setPaginacaoApi] = useState({ // Renomeado para evitar conflito
+    hashProximaPagina: null,
+    temMais: false
+  });
+
+  // Estados para paginação local
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // State for dashboard data
   const [dashboardStats, setDashboardStats] = useState({ totalValue: 0, totalNotes: 0, avgTicket: 0 });
   const [lineChartData, setLineChartData] = useState({ labels: [], datasets: [] });
@@ -49,13 +64,11 @@ const Home = () => {
   }, [user]);
 
   const processDashboardData = (notes) => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const recentNotes = notes.filter(n => new Date(n.created_at) > thirtyDaysAgo);
+    // As notas já virão filtradas pelos últimos 30 dias pela API
+    const recentNotes = notes; 
 
     // 1. KPI Stats
-    const totalValue = recentNotes.reduce((sum, n) => sum + (n.nfse_data?.servico[0]?.valor?.servico || 0), 0);
+    const totalValue = recentNotes.reduce((sum, n) => sum + (n.valorServico || 0), 0);
     const totalNotes = recentNotes.length;
     const avgTicket = totalNotes > 0 ? totalValue / totalNotes : 0;
     setDashboardStats({ totalValue, totalNotes, avgTicket });
@@ -68,8 +81,8 @@ const Home = () => {
       dailyValues[date.toISOString().split('T')[0]] = 0;
     }
     recentNotes.forEach(n => {
-      const date = new Date(n.created_at).toISOString().split('T')[0];
-      dailyValues[date] = (dailyValues[date] || 0) + (n.nfse_data?.servico[0]?.valor?.servico || 0);
+      const date = new Date(n.emissao).toISOString().split('T')[0]; // Usar 'emissao' da nota
+      dailyValues[date] = (dailyValues[date] || 0) + (n.valorServico || 0);
     });
     const lineLabels = Object.keys(dailyValues).sort();
     const lineValues = lineLabels.map(label => dailyValues[label]);
@@ -87,7 +100,7 @@ const Home = () => {
 
     // 3. Doughnut Chart Data (Status)
     const statusCounts = notes.reduce((acc, n) => {
-      const status = n.status || 'Desconhecido';
+      const status = n.situacao || 'Desconhecido'; // Usar 'situacao' da nota
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
@@ -101,26 +114,76 @@ const Home = () => {
     });
   };
 
-  const loadNFSe = async () => {
+  const loadNFSe = async (resetPagina = true) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await listNfses();
-      setNfseList(data || []);
-      processDashboardData(data || []); // Process data for dashboard
+
+      const response = await consultarNotasPorPeriodo({
+        cpfCnpj: '08187168000160', // CNPJ mockado conforme solicitado
+        dataInicial: filtros.dataInicial,
+        dataFinal: filtros.dataFinal,
+        hashProximaPagina: resetPagina ? null : paginacaoApi.hashProximaPagina
+      });
+
+      const fetchedNotes = response.notas || [];
+
+      if (resetPagina) {
+        setNfseList(fetchedNotes);
+        setCurrentPage(1); // Resetar paginação local ao carregar novas notas
+        processDashboardData(fetchedNotes); // Processar dados para o dashboard
+      } else {
+        setNfseList(prev => [...prev, ...fetchedNotes]);
+        processDashboardData([...nfseList, ...fetchedNotes]); // Re-processar com todas as notas
+      }
+
+      setPaginacaoApi({
+        hashProximaPagina: response.hashProximaPagina,
+        temMais: !!response.hashProximaPagina
+      });
+
     } catch (err) {
-      console.error('Error loading NFS-e from Supabase:', err);
-      setError('Erro ao carregar suas NFS-e do banco de dados.');
+      console.error('Erro ao carregar NFS-e:', err);
+      setError('Erro ao carregar suas NFS-e.');
       setNfseList([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const carregarMaisApi = () => { // Renomeado para carregar mais da API
+    if (paginacaoApi.temMais && !loading) {
+      loadNFSe(false);
+    }
+  };
+
+  // Lógica de paginação local
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentNfses = nfseList.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(nfseList.length / itemsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: { legend: { position: 'bottom' } },
+  };
+
+  const getStatusClass = (situacao) => {
+    switch (situacao?.toUpperCase()) {
+      case 'CONCLUIDO':
+        return 'status-success';
+      case 'CANCELADO':
+        return 'status-cancelled';
+      case 'ERRO':
+        return 'status-error';
+      case 'PROCESSANDO':
+        return 'status-pending';
+      default:
+        return 'status-pending';
+    }
   };
 
   return (
@@ -175,7 +238,7 @@ const Home = () => {
       {error && (
         <div className="error-state">
           <p>{error}</p>
-          <button className="btn-secondary" onClick={loadNFSe}>
+          <button className="btn-secondary" onClick={() => loadNFSe()}>
             Tentar Novamente
           </button>
         </div>
@@ -192,10 +255,72 @@ const Home = () => {
       )}
 
       {!loading && !error && nfseList.length > 0 && (
-        <div className="nfse-grid">
-          {nfseList.map((nfseItem) => (
-            <NFSeCard key={nfseItem.id} nfse={nfseItem.nfse_data} />
-          ))}
+        <div className="nfse-table-container">
+          <table className="nfse-table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Emissão</th>
+                <th>Tomador</th>
+                <th>Valor</th>
+                <th>Situação</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentNfses.map((nfseItem) => (
+                <tr key={nfseItem.id} onClick={() => navigate(`/nfse/${nfseItem.id}`)}>
+                  <td>{nfseItem.numeroNfse || nfseItem.id}</td>
+                  <td>{formatDate(nfseItem.emissao)}</td>
+                  <td>{nfseItem.tomador || 'N/A'}</td>
+                  <td>{formatCurrency(nfseItem.valorServico || 0)}</td>
+                  <td>
+                    <span className={`nfse-status-badge ${getStatusClass(nfseItem.situacao)}`}>
+                      {nfseItem.situacao || 'Processando'}
+                    </span>
+                  </td>
+                  <td>
+                    {/* Aqui você pode adicionar botões de ação como visualizar, baixar PDF, etc. */}
+                    <button className="btn-icon" onClick={(e) => { e.stopPropagation(); navigate(`/nfse/${nfseItem.id}`); }}>
+                      Detalhes
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Controles de Paginação Local */}
+          <div className="pagination-controls">
+            <button 
+              onClick={() => paginate(currentPage - 1)} 
+              disabled={currentPage === 1 || loading}
+              className="btn-secondary"
+            >
+              Anterior
+            </button>
+            <span>Página {currentPage} de {totalPages}</span>
+            <button 
+              onClick={() => paginate(currentPage + 1)} 
+              disabled={currentPage === totalPages || loading}
+              className="btn-secondary"
+            >
+              Próxima
+            </button>
+          </div>
+
+          {/* Botão para carregar mais da API, se houver */}
+          {paginacaoApi.temMais && (
+            <div className="paginacao-api-load-more">
+              <button 
+                onClick={carregarMaisApi} 
+                className="btn-primary"
+                disabled={loading}
+              >
+                {loading ? 'Carregando mais notas...' : 'Carregar Mais Notas da API'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -203,3 +328,4 @@ const Home = () => {
 };
 
 export default Home;
+

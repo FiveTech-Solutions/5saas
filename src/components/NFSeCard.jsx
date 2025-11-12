@@ -10,16 +10,16 @@ const NFSeCard = ({ nfse }) => {
     navigate(`/nfse/${nfse.id}`);
   };
 
-  const getStatusClass = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'autorizado':
-      case 'processado':
+  const getStatusClass = (situacao) => {
+    switch (situacao?.toUpperCase()) {
+      case 'CONCLUIDO':
         return 'status-success';
-      case 'cancelado':
+      case 'CANCELADO':
         return 'status-cancelled';
-      case 'erro':
-      case 'rejeitado':
+      case 'ERRO':
         return 'status-error';
+      case 'PROCESSANDO':
+        return 'status-pending';
       default:
         return 'status-pending';
     }
@@ -29,29 +29,29 @@ const NFSeCard = ({ nfse }) => {
     <div className="nfse-card" onClick={handleClick}>
       <div className="nfse-card-header">
         <div>
-          <h3 className="nfse-number">NFS-e #{nfse.numero || nfse.id}</h3>
-          <p className="nfse-date">{formatDate(nfse.dataEmissao || nfse.createdAt)}</p>
+          <h3 className="nfse-number">NFS-e #{nfse.numeroNfse || nfse.id}</h3>
+          <p className="nfse-date">{formatDate(nfse.emissao)}</p>
         </div>
-        <span className={`nfse-status ${getStatusClass(nfse.status)}`}>
-          {nfse.status || 'Processando'}
+        <span className={`nfse-status ${getStatusClass(nfse.situacao)}`}>
+          {nfse.situacao || 'Processando'}
         </span>
       </div>
       
       <div className="nfse-card-body">
         <div className="nfse-info">
           <label>Tomador:</label>
-          <span>{nfse.tomador?.razaoSocial || nfse.tomador?.nome || 'N/A'}</span>
+          <span>{nfse.tomador || 'N/A'}</span>
         </div>
         
         <div className="nfse-info">
           <label>Serviço:</label>
-          <span>{nfse.servico?.discriminacao?.substring(0, 50) || 'N/A'}...</span>
+          <span>{nfse.mensagem?.substring(0, 50) || 'Serviço Prestado'}...</span>
         </div>
         
         <div className="nfse-info">
           <label>Valor:</label>
           <span className="nfse-value">
-            {formatCurrency(nfse.servico?.valorServicos || nfse.valor || 0)}
+            {formatCurrency(nfse.valorServico || 0)}
           </span>
         </div>
       </div>

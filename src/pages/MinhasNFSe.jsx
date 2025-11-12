@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { 
-  consultarNotasPorPeriodo, 
-  baixarPdfNota, 
-  baixarXmlNota, 
-  enviarNotaPorEmail, 
-  cancelarNota 
+import {
+  consultarNotasPorPeriodo,
+  baixarPdfNota,
+  baixarXmlNota,
+  enviarNotaPorEmail,
+  cancelarNota
 } from '../services/nfseService';
 import { useAuth } from '../contexts/AuthContext';
 import './MinhasNFSe.css';
@@ -30,7 +30,7 @@ import {
 
 const MinhasNFSe = () => {
   const { user } = useAuth();
-  
+
   // Estados para filtros e dados
   const [notas, setNotas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -134,12 +134,10 @@ const MinhasNFSe = () => {
     try {
       // Para desenvolvimento, vamos usar o CNPJ da empresa cadastrada
       // Em produção, isso deve vir dos dados da empresa do usuário
-      const cpfCnpjEmpresa = user?.company?.cnpj || '18187168000160'; // CNPJ de exemplo
 
       const response = await consultarNotasPorPeriodo({
-        cpfCnpj: cpfCnpjEmpresa,
-        dataInicial: filtros.dataInicial,
-        dataFinal: filtros.dataFinal,
+        cpfCnpj: '08187168000160', dataInicial: filtros.dataInicial || null,
+        dataFinal: filtros.dataFinal || null,
         hashProximaPagina: resetPagina ? null : paginacao.hashProximaPagina
       });
 
@@ -151,7 +149,7 @@ const MinhasNFSe = () => {
       }
 
       if (filtros.tomador) {
-        notasFiltradas = notasFiltradas.filter(nota => 
+        notasFiltradas = notasFiltradas.filter(nota =>
           nota.tomador && nota.tomador.includes(filtros.tomador)
         );
       }
@@ -178,7 +176,7 @@ const MinhasNFSe = () => {
   const consultarNotasPorPeriodo_Mock = async (params) => {
     // Mock data para demonstração
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     return {
       hashProximaPagina: Math.random() > 0.7 ? "next_page_hash" : null,
       notas: [
@@ -298,7 +296,7 @@ const MinhasNFSe = () => {
             Filtros de Busca
           </h3>
         </div>
-        
+
         <div className="filtros-grid">
           <div className="filtro-grupo">
             <label htmlFor="dataInicial">
@@ -432,14 +430,14 @@ const MinhasNFSe = () => {
                 </div>
 
                 <div className="nota-acoes">
-                  <button 
+                  <button
                     className="btn-acao btn-visualizar"
                     title="Visualizar Detalhes"
                   >
                     <Visibility />
                   </button>
-                  
-                  <button 
+
+                  <button
                     className="btn-acao btn-download"
                     title="Baixar PDF"
                     onClick={() => handleBaixarPdf(nota)}
@@ -447,8 +445,8 @@ const MinhasNFSe = () => {
                   >
                     <GetApp />
                   </button>
-                  
-                  <button 
+
+                  <button
                     className="btn-acao btn-xml"
                     title="Baixar XML"
                     onClick={() => handleBaixarXml(nota)}
@@ -456,8 +454,8 @@ const MinhasNFSe = () => {
                   >
                     <Description />
                   </button>
-                  
-                  <button 
+
+                  <button
                     className="btn-acao btn-email"
                     title="Enviar por Email"
                     onClick={() => setEmailModal({ aberto: true, nota })}
@@ -465,9 +463,9 @@ const MinhasNFSe = () => {
                   >
                     <Email />
                   </button>
-                  
+
                   {nota.situacao === 'CONCLUIDO' && (
-                    <button 
+                    <button
                       className="btn-acao btn-cancelar"
                       title="Cancelar Nota"
                       onClick={() => setCancelModal({ aberto: true, nota })}
@@ -484,8 +482,8 @@ const MinhasNFSe = () => {
           {/* Paginação */}
           {paginacao.temMais && (
             <div className="paginacao">
-              <button 
-                onClick={carregarMais} 
+              <button
+                onClick={carregarMais}
                 className="btn-carregar-mais"
                 disabled={loading}
               >
@@ -511,18 +509,18 @@ const MinhasNFSe = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Enviar NFSe por Email</h3>
-              <button 
+              <button
                 className="modal-close"
                 onClick={() => setEmailModal({ aberto: false, nota: null })}
               >
                 ×
               </button>
             </div>
-            
+
             <div className="modal-body">
               <p><strong>Nota:</strong> {emailModal.nota?.numeroNfse || emailModal.nota?.numero}</p>
               <p><strong>Emissão:</strong> {emailModal.nota?.emissao}</p>
-              
+
               <div className="form-group">
                 <label>Destinatários (separados por vírgula):</label>
                 <textarea
@@ -533,16 +531,16 @@ const MinhasNFSe = () => {
                 />
               </div>
             </div>
-            
+
             <div className="modal-footer">
-              <button 
+              <button
                 className="btn-secondary"
                 onClick={() => setEmailModal({ aberto: false, nota: null })}
                 disabled={processandoAcao}
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 className="btn-primary"
                 onClick={handleEnviarEmail}
                 disabled={processandoAcao || !emailDestinos.trim()}
@@ -560,19 +558,19 @@ const MinhasNFSe = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Cancelar NFSe</h3>
-              <button 
+              <button
                 className="modal-close"
                 onClick={() => setCancelModal({ aberto: false, nota: null })}
               >
                 ×
               </button>
             </div>
-            
+
             <div className="modal-body">
               <p><strong>Nota:</strong> {cancelModal.nota?.numeroNfse || cancelModal.nota?.numero}</p>
               <p><strong>Emissão:</strong> {cancelModal.nota?.emissao}</p>
               <p><strong>Valor:</strong> R$ {cancelModal.nota?.valorServico?.toFixed(2)}</p>
-              
+
               <div className="form-group">
                 <label>Código de Cancelamento:</label>
                 <select
@@ -584,7 +582,7 @@ const MinhasNFSe = () => {
                   <option value="9">9 - Outros</option>
                 </select>
               </div>
-              
+
               <div className="form-group">
                 <label>Motivo do Cancelamento:</label>
                 <textarea
@@ -594,21 +592,21 @@ const MinhasNFSe = () => {
                   rows={3}
                 />
               </div>
-              
+
               <div className="alert-warning">
                 <strong>Atenção:</strong> Esta ação não pode ser desfeita. A nota será cancelada permanentemente.
               </div>
             </div>
-            
+
             <div className="modal-footer">
-              <button 
+              <button
                 className="btn-secondary"
                 onClick={() => setCancelModal({ aberto: false, nota: null })}
                 disabled={processandoAcao}
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 className="btn-danger"
                 onClick={handleCancelarNota}
                 disabled={processandoAcao || !motivoCancelamento.trim()}

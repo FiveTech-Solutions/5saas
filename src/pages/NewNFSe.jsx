@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createNFSe as createNFSeExternal } from '../services/nfseService';
 import { createNfse as createNfseSupabase } from '../services/nfseSupabaseService';
@@ -50,9 +50,19 @@ const NewNFSe = () => {
     ],
   });
 
-  // Save state to context whenever it changes
+  // Refs to store previous state for comparison
+  const prevFormDataRef = useRef();
+  const prevSelectedCustomerRef = useRef();
+
+  // Save state to context whenever it changes, with deep comparison
   useEffect(() => {
-    setPageData('newNFSe', { formData, selectedCustomer });
+    // Only update if formData or selectedCustomer have actually changed content
+    if (JSON.stringify(formData) !== JSON.stringify(prevFormDataRef.current) ||
+        JSON.stringify(selectedCustomer) !== JSON.stringify(prevSelectedCustomerRef.current)) {
+      setPageData('newNFSe', { formData, selectedCustomer });
+      prevFormDataRef.current = formData;
+      prevSelectedCustomerRef.current = selectedCustomer;
+    }
   }, [formData, selectedCustomer, setPageData]);
 
   // Load initial data (company and customers)

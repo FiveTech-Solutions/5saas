@@ -1,3 +1,31 @@
+const toCamelCase = (str) => {
+  return str.replace(/([-_][a-z])/ig, ($1) => {
+    return $1.toUpperCase()
+      .replace('-', '')
+      .replace('_', '');
+  });
+};
+
+const isObject = (obj) => {
+  return obj === Object(obj) && !Array.isArray(obj) && typeof obj !== 'function';
+};
+
+export const keysToCamelCase = (obj) => {
+  if (isObject(obj)) {
+    const newObj = {};
+    Object.keys(obj)
+      .forEach(key => {
+        newObj[toCamelCase(key)] = keysToCamelCase(obj[key]);
+      });
+    return newObj;
+  } else if (Array.isArray(obj)) {
+    return obj.map(i => {
+      return keysToCamelCase(i);
+    });
+  }
+  return obj;
+};
+
 /**
  * Download a file from a blob
  * @param {Blob} blob - The blob data
