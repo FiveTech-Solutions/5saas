@@ -49,7 +49,7 @@ const ServicosTomados = () => {
               <p><strong>Status:</strong> {nfse.status}</p>
               <p><strong>Tomador:</strong> {nfse.nfse_data?.tomador?.razaoSocial || 'N/A'}</p>
               <p><strong>Service Description:</strong> {nfse.nfse_data?.servico?.[0]?.discriminacao || 'N/A'}</p>
-              <p><strong>Service Value:</strong> R$ {nfse.nfse_data?.servico?.[0]?.valor?.servico?.toFixed(2) || '0.00'}</p>
+              <p><strong>Service Value:</strong> R$ {parseFloat(nfse.nfse_data?.servico?.[0]?.valor?.servico || 0).toFixed(2)}</p>
               <p><strong>Created At:</strong> {new Date(nfse.created_at).toLocaleString()}</p>
               {/* You can add more details or a link to a detail page here */}
             </div>
