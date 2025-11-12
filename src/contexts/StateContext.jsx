@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const StateContext = createContext();
 
@@ -21,21 +21,21 @@ export const StateProvider = ({ children }) => {
     }
   }, [appState]);
 
-  const setPageData = (page, data) => {
+  const setPageData = useCallback((page, data) => {
     setAppState(prevState => ({
       ...prevState,
       [page]: data,
     }));
-  };
+  }, []);
 
-  const getPageData = (page) => {
+  const getPageData = useCallback((page) => {
     return appState[page] || {};
-  };
+  }, [appState]);
 
-  const value = {
+  const value = useMemo(() => ({
     setPageData,
     getPageData,
-  };
+  }), [setPageData, getPageData]);
 
   return (
     <StateContext.Provider value={value}>

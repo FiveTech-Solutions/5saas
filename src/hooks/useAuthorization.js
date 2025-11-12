@@ -52,11 +52,6 @@ export const useAuthorization = () => {
    */
   const canAudit = () => {
     const result = hasPermission(['administrador', 'auditor']);
-    console.log('🔍 canAudit Debug:', {
-      userRole: user?.user_role,
-      allowedRoles: ['administrador', 'auditor'],
-      result
-    });
     return result;
   };
 
@@ -66,12 +61,6 @@ export const useAuthorization = () => {
    */
   const canEmitNFSe = () => {
     const result = hasPermission(['administrador', 'operador']);
-    console.log('🔍 canEmitNFSe Debug:', {
-      userRole: user?.user_role,
-      allowedRoles: ['administrador', 'operador'],
-      hasUser: !!user,
-      result
-    });
     return result;
   };
 
@@ -99,8 +88,6 @@ export const useAuthorization = () => {
    */
   const getUserProfile = () => {
     if (!user) return null;
-
-    console.log('useAuthorization - Current user:', user);
 
     const profiles = {
       administrador: {

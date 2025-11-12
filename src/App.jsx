@@ -19,8 +19,30 @@ import MinhasNFSe from './pages/MinhasNFSe';
 import AdminTools from './components/AdminTools'; // Temporário para atualizar usuário
 import './App.css';
 
+// Componente para proteger rotas que exigem apenas autenticação
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/auth" replace />;
+};
+
+// Componente para proteger rotas baseadas em perfil (role)
+const RoleProtectedRoute = ({ allowedRoles, children }) => {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (!allowedRoles.includes(user?.user_role)) {
+    // Redireciona para a home se não tiver a permissão
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 function App() {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { loading } = useAuth();
 
   // Mostrar loading enquanto verifica autenticação
   if (loading) {
@@ -37,54 +59,80 @@ function App() {
     );
   }
 
-  // A simple router wrapper for protected routes
-  const ProtectedRoutes = () => (
-    <Routes>
-      <Route element={<MainLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/nfse" element={<MinhasNFSe />} />
-        <Route path="/nfse/new" element={<NewNFSe />} />
-        <Route path="/nfse/:id" element={<NFSeDetails />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/empresa/configuracoes" element={<CompanySettings />} />
-        <Route path="/clientes" element={<Customers />} />
-        <Route path="/servicos-tomados" element={<ServicosTomados />} />
-        <Route path="/des-if" element={<Desif />} />
-        <Route path="/divida-ativa" element={<DividaAtiva />} />
-        
-        {/* Admin Routes */}
-        <Route
-          path="/admin/company"
-          element={user?.user_role === 'administrador' ? <CompanySettings /> : <Navigate to="/" />}
-        />
-        <Route
-          path="/admin/users"
-          element={user?.user_role === 'administrador' ? <UserManagement /> : <Navigate to="/" />}
-        />
-        <Route
-          path="/admin/parametros"
-          element={user?.user_role === 'administrador' ? <AdminParametros /> : <Navigate to="/" />}
-        />
-
-        {/* Auditor Routes */}
-        <Route
-          path="/auditoria/simples-nacional"
-          element={user?.user_role === 'auditor' ? <AuditoriaSimplesNacional /> : <Navigate to="/" />}
-        />
-        <Route
-          path="/auditoria/autos-infracao"
-          element={user?.user_role === 'auditor' ? <AuditoriaAutosInfracao /> : <Navigate to="/" />}
-        />
-
-        {/* Redirect any other path to home */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Route>
-    </Routes>
-  );
-
   return (
     <Router>
-      {isAuthenticated ? <ProtectedRoutes /> : <Auth />}
+      <Routes>
+        {/* Rota pública de autenticação */}
+        <Route path="/auth" element={<Auth />} />
+        
+        {/* Rota temporária de admin */}
+        <Route path="/update-user" element={<AdminTools />} />
+
+        {/* Agrupamento de rotas protegidas que usam o MainLayout */}
+        <Route 
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
+          {/* Rotas para todos os usuários autenticados */}
+          <Route path="/" element={<Home />} />
+          <Route path="/nfse" element={<MinhasNFSe />} />
+          <Route path="/nfse/new" element={<NewNFSe />} />
+          <Route path="/nfse/:id" element={<NFSeDetails />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/empresa/configuracoes" element={<CompanySettings />} />
+          <Route path="/clientes" element={<Customers />} />
+          <Route path="/servicos-tomados" element={<ServicosTomados />} />
+          <Route path="/des-if" element={<Desif />} />
+
+          {/* Rotas com permissões específicas */}
+          <Route 
+            path="/admin/users"
+            element={
+              <RoleProtectedRoute allowedRoles={['administrador']}>
+                <UserManagement />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route 
+            path="/admin/parametros"
+            element={
+              <RoleProtectedRoute allowedRoles={['administrador']}>
+                <AdminParametros />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route 
+            path="/auditoria/simples-nacional"
+            element={
+              <RoleProtectedRoute allowedRoles={['administrador', 'auditor']}>
+                <AuditoriaSimplesNacional />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route 
+            path="/auditoria/autos-infracao"
+            element={
+              <RoleProtectedRoute allowedRoles={['administrador', 'auditor']}>
+                <AuditoriaAutosInfracao />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route 
+            path="/divida-ativa"
+            element={
+              <RoleProtectedRoute allowedRoles={['administrador', 'auditor']}>
+                <DividaAtiva />
+              </RoleProtectedRoute>
+            }
+          />
+        </Route>
+
+        {/* Redirecionamento para rotas não encontradas */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </Router>
   );
 }

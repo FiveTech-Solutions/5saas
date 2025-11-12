@@ -159,11 +159,11 @@ const UserManagement = () => {
                   <td>
                     <div className="user-info">
                       <div className="user-avatar">
-                        {(user.full_name || user.name || user.email).charAt(0).toUpperCase()}
+                        {((user.full_name || user.name || user.email) || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="user-details">
                         <strong>{user.full_name || user.name || 'N/A'}</strong>
-                        <span className="user-email">{user.email}</span>
+                        <span className="user-email">{user.email || 'Email não disponível'}</span>
                       </div>
                     </div>
                   </td>

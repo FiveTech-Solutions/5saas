@@ -43,16 +43,6 @@ const Sidebar = () => {
   
   const userProfile = getUserProfile();
   
-  console.log('Sidebar Debug:', {
-    user,
-    userProfile,
-    canManageUsers: canManageUsers(),
-    canAudit: canAudit(),
-    canEmitNFSe: canEmitNFSe(),
-    canManageParameters: canManageParameters(),
-    canManageDebt: canManageDebt()
-  });
-  
   const handleLogout = async () => {
     await logout();
     navigate('/auth');

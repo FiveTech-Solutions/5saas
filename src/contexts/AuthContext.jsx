@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { getUserProfile, logUserAction } from '../services/userService';
 
@@ -10,22 +10,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Obter sessão atual
     const getSession = async () => {
       setLoading(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          // Buscar perfil completo do usuário
           const profile = await getUserProfile(session.user.id);
-          
           if (profile) {
-            setUser({
-              id: session.user.id,
-              email: session.user.email,
-              ...profile
-            });
+            setUser({ id: session.user.id, email: session.user.email, ...profile });
             setIsAuthenticated(true);
           }
         }
@@ -38,53 +31,24 @@ export const AuthProvider = ({ children }) => {
 
     getSession();
 
-    // Escutar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth State Change:', event, session?.user?.id);
-        
+        setLoading(true);
         if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            // Log do login
-            await logUserAction('login');
-            
-            // Buscar perfil completo
-            const profile = await getUserProfile(session.user.id);
-            console.log('Profile loaded:', profile);
-            
-            if (profile) {
-              const userData = {
-                id: session.user.id,
-                email: session.user.email,
-                ...profile
-              };
-              console.log('Setting user:', userData);
-              setUser(userData);
-              setIsAuthenticated(true);
-            }
-          } catch (error) {
-            console.error('Erro ao processar login:', error);
+          const profile = await getUserProfile(session.user.id);
+          if (profile) {
+            setUser({ id: session.user.id, email: session.user.email, ...profile });
+            setIsAuthenticated(true);
           }
         } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out');
           setUser(null);
           setIsAuthenticated(false);
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          // Atualizar dados do usuário quando token for renovado
-          try {
-            const profile = await getUserProfile(session.user.id);
-            if (profile) {
-              setUser({
-                id: session.user.id,
-                email: session.user.email,
-                ...profile
-              });
-            }
-          } catch (error) {
-            console.error('Erro ao atualizar perfil:', error);
+          const profile = await getUserProfile(session.user.id);
+          if (profile) {
+            setUser({ id: session.user.id, email: session.user.email, ...profile });
           }
         }
-        
         setLoading(false);
       }
     );
@@ -92,51 +56,41 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await logUserAction('logout');
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('Erro no logout:', error);
-      }
-      
+      await supabase.auth.signOut();
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Erro no logout:', error);
     }
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
-      if (user?.id) {
-        const profile = await getUserProfile(user.id);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        const profile = await getUserProfile(currentUser.id);
         if (profile) {
-          setUser({
-            id: user.id,
-            email: user.email,
-            ...profile
-          });
+          setUser({ id: currentUser.id, email: currentUser.email, ...profile });
         }
       }
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
     }
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     isAuthenticated,
     loading,
     logout,
     refreshUser,
-    profile: user, // Mantido para compatibilidade
-    
-    // Funções auxiliares
+    profile: user,
     setUser,
     setIsAuthenticated
-  };
+  }), [user, isAuthenticated, loading, logout, refreshUser]);
 
   return (
     <AuthContext.Provider value={value}>

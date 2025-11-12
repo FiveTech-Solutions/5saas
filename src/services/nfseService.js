@@ -87,148 +87,88 @@ export const listNFSe = async (params = {}) => {
  * @param {string} params.hashProximaPagina - Hash para paginação
  * @returns {Promise<Object>} Resposta com notas e hash da próxima página
  */
-export const consultarNotasPorPeriodo = async ({ cpfCnpj, dataInicial, dataFinal, hashProximaPagina }) => {
+export const consultarNotasPorPeriodo = async (params) => {
   try {
-    const url = new URL(`${PLUGNOTAS_API_BASE}/nfse`);
-    
-    // Adicionar parâmetros de consulta
-    const params = {
-      cpfCnpj,
-      dataInicial,
-      dataFinal
-    };
-
-    if (hashProximaPagina) {
-      params.hashProximaPagina = hashProximaPagina;
-    }
-
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'x-api-key': PLUGNOTAS_API_KEY,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erro na API: ${response.status} ${response.statusText}`);
-    }
-
-    return await response.json();
+    const response = await api.get('/nfse', { params });
+    return response.data;
   } catch (error) {
     console.error('Erro ao consultar notas por período:', error);
-    throw error;
+    throw error.response?.data || error.message;
   }
 };
 
 // Função para baixar PDF da nota
 export const baixarPdfNota = async (idNota) => {
   try {
-    const response = await fetch(`${PLUGNOTAS_API_BASE}/nfse/pdf/${idNota}`, {
-      method: 'GET',
-      headers: {
-        'x-api-key': PLUGNOTAS_API_KEY
-      }
+    const response = await api.get(`/nfse/pdf/${idNota}`, {
+      responseType: 'blob',
     });
 
-    if (!response.ok) {
-      throw new Error(`Erro ao baixar PDF: ${response.status} ${response.statusText}`);
-    }
-
-    const blob = await response.blob();
+    const blob = response.data;
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `NFSe_${idNota}.pdf`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 
     return { success: true };
   } catch (error) {
     console.error('Erro ao baixar PDF:', error);
-    throw error;
+    throw error.response?.data || error.message;
   }
 };
 
 // Função para baixar XML da nota
 export const baixarXmlNota = async (idNota) => {
   try {
-    const response = await fetch(`${PLUGNOTAS_API_BASE}/nfse/xml/${idNota}`, {
-      method: 'GET',
-      headers: {
-        'x-api-key': PLUGNOTAS_API_KEY
-      }
+    const response = await api.get(`/nfse/xml/${idNota}`, {
+      responseType: 'blob',
     });
 
-    if (!response.ok) {
-      throw new Error(`Erro ao baixar XML: ${response.status} ${response.statusText}`);
-    }
-
-    const blob = await response.blob();
+    const blob = response.data;
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `NFSe_${idNota}.xml`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 
     return { success: true };
   } catch (error) {
     console.error('Erro ao baixar XML:', error);
-    throw error;
+    throw error.response?.data || error.message;
   }
 };
 
 // Função para enviar nota por email
 export const enviarNotaPorEmail = async (idNota, destinatarios, reenvio = true) => {
   try {
-    const response = await fetch(`${PLUGNOTAS_API_BASE}/nfse/email/${idNota}`, {
-      method: 'POST',
-      headers: {
-        'x-api-key': PLUGNOTAS_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        reenvio,
-        destinatarios
-      })
+    const response = await api.post(`/nfse/email/${idNota}`, {
+      reenvio,
+      destinatarios,
     });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao enviar email: ${response.status} ${response.statusText}`);
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
     console.error('Erro ao enviar nota por email:', error);
-    throw error;
+    throw error.response?.data || error.message;
   }
 };
 
 // Função para cancelar nota
 export const cancelarNota = async (idNota, codigo = '9', motivo = 'Cancelamento a pedido do Prestador') => {
   try {
-    const response = await fetch(`${PLUGNOTAS_API_BASE}/nfse/cancelar/${idNota}`, {
-      method: 'POST',
-      headers: {
-        'x-api-key': PLUGNOTAS_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        codigo,
-        motivo
-      })
+    const response = await api.post(`/nfse/cancelar/${idNota}`, {
+      codigo,
+      motivo,
     });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao cancelar nota: ${response.status} ${response.statusText}`);
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
     console.error('Erro ao cancelar nota:', error);
-    throw error;
+    throw error.response?.data || error.message;
   }
 };

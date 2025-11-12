@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { getCompany, saveCompany } from '../services/companyService';
 import { registerCompanyWithPlugNotas } from '../services/plugnotasService';
 import { getAddressFromCEP } from '../services/viaCepService';
-import { uploadCertificate, getCertificates } from '../services/certificateService';
+// Certificate logic is temporarily simplified
+// import { uploadCertificate, getCertificates } from '../services/certificateService';
 import './CompanySettings.css';
 
+// New initial state matching the PlugNotas API structure more closely
 const initialState = {
   cpf_cnpj: '',
   razao_social: '',
@@ -12,26 +14,36 @@ const initialState = {
   inscricao_municipal: '',
   inscricao_estadual: '',
   email: '',
-  telefone: '',
+  telefone: '', // Will be a single string in the form, parsed on submit
   simples_nacional: true,
-  regime_tributario: 1, // 1 = Simples Nacional
+  regime_tributario: 1,
   incentivo_fiscal: false,
   incentivador_cultural: false,
   regime_tributario_especial: 0,
   endereco: {
     cep: '', logradouro: '', numero: '', complemento: '',
     bairro: '', cidade: '', estado: '', codigo_cidade: '',
-    tipoLogradouro: '', 
-    tipoBairro: 'Bairro',
+    tipoLogradouro: 'Rua', tipoBairro: 'Bairro',
   },
-  nfse: { producao: false, cidadePrestacao: '' },
-  nfe: {},
-  nfce: {},
-  mdfe: {},
-  cfe: {},
-  nfcom: {},
-  certificado: null,
+  // Simplified NFSe object with default config
+  nfse: {
+    ativo: true,
+    tipoContrato: 0,
+    config: {
+      producao: false, // Start in sandbox
+      rps: { numeracaoAutomatica: true },
+      email: { envio: true },
+    }
+  },
+  // Add other document types with default 'ativo: false'
+  nfe: { ativo: false },
+  nfce: { ativo: false },
+  mdfe: { ativo: false },
+  cfe: { ativo: false },
+  nfcom: { ativo: false },
 };
+
+const MOCKED_CERTIFICATE_ID = "5af59d271f6e8f409178fbf3";
 
 const CompanySettings = () => {
   const [formData, setFormData] = useState(initialState);
@@ -40,20 +52,17 @@ const CompanySettings = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const [certificateFile, setCertificateFile] = useState(null);
-  const [certificatePassword, setCertificatePassword] = useState('');
-  const [certificateId, setCertificateId] = useState(null);
-  const [uploadingCertificate, setUploadingCertificate] = useState(false);
-  const [certificates, setCertificates] = useState([]);
+  // Certificate logic is temporarily simplified
+  // const [certificateFile, setCertificateFile] = useState(null);
+  // const [certificatePassword, setCertificatePassword] = useState('');
+  // const [uploadingCertificate, setUploadingCertificate] = useState(false);
+  // const [certificates, setCertificates] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [company, certs] = await Promise.all([
-          getCompany(),
-          getCertificates(),
-        ]);
+        const company = await getCompany();
 
         if (company) {
           // Deep merge to ensure all nested objects and fields are present
@@ -63,12 +72,6 @@ const CompanySettings = () => {
             endereco: { ...prev.endereco, ...(company.endereco || {}) },
             nfse: { ...prev.nfse, ...(company.nfse || {}) },
           }));
-          if (company.certificado) {
-            setCertificateId(company.certificado);
-          }
-        }
-        if (certs) {
-          setCertificates(certs);
         }
       } catch (err) {
         setError('Falha ao carregar os dados da empresa.');
@@ -89,36 +92,6 @@ const CompanySettings = () => {
       ...prev,
       endereco: { ...prev.endereco, [field]: value },
     }));
-  };
-
-  const handleFileChange = (e) => {
-    setCertificateFile(e.target.files[0]);
-  };
-
-  const handleCertificateUpload = async (e) => {
-    e.preventDefault();
-    if (!certificateFile || !certificatePassword) {
-      setError('Por favor, selecione um arquivo de certificado e digite a senha.');
-      return;
-    }
-    setUploadingCertificate(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const id = await uploadCertificate(certificateFile, certificatePassword);
-      setCertificateId(id);
-      setSuccess('Certificado enviado com sucesso!');
-      // Refresh the list of certificates
-      const certs = await getCertificates();
-      if (certs) {
-        setCertificates(certs);
-      }
-    } catch (err) {
-      setError(err.message || 'Falha ao enviar o certificado.');
-      console.error(err);
-    } finally {
-      setUploadingCertificate(false);
-    }
   };
 
   const handleCepBlur = async (cep) => {
@@ -148,47 +121,28 @@ const CompanySettings = () => {
     try {
       // Step 1: Save data locally to our Supabase DB
       setSuccess('Salvando dados locais...');
-      const localData = await saveCompany({ ...formData, certificado: certificateId });
-      setFormData(prev => ({ ...prev, ...localData })); // Update state with any DB defaults
+      // Use the mocked certificate ID for local saving as well
+      const localData = await saveCompany({ ...formData, certificado: MOCKED_CERTIFICATE_ID });
+      setFormData(prev => ({ ...prev, ...localData }));
       setSuccess('Dados salvos com sucesso! Registrando no provedor fiscal...');
 
-      // Step 2: Register the company with the external provider
+      // Step 2: Prepare and register the company with the external provider
+      
+      // Parse phone into DDD and number
+      const phoneString = formData.telefone.replace(/\D/g, '');
+      const telefonePayload = {
+        ddd: phoneString.substring(0, 2),
+        numero: phoneString.substring(2),
+      };
+
       const apiPayload = {
-        cpfCnpj: formData.cpf_cnpj,
-        inscricaoMunicipal: formData.inscricao_municipal,
-        inscricaoEstadual: formData.inscricao_estadual,
-        razaoSocial: formData.razao_social,
-        nomeFantasia: formData.nome_fantasia,
-        certificado: certificateId,
-        simplesNacional: formData.simples_nacional,
-        regimeTributario: formData.regime_tributario,
-        incentivoFiscal: formData.incentivo_fiscal,
-        incentivadorCultural: formData.incentivador_cultural,
-        regimeTributarioEspecial: formData.regime_tributario_especial,
-        endereco: {
-          cep: formData.endereco.cep,
-          logradouro: formData.endereco.logradouro,
-          numero: formData.endereco.numero,
-          complemento: formData.endereco.complemento,
-          bairro: formData.endereco.bairro,
-          codigoCidade: formData.endereco.codigo_cidade,
-          cidade: formData.endereco.cidade,
-          estado: formData.endereco.estado,
-          tipoLogradouro: formData.endereco.tipoLogradouro,
-          tipoBairro: formData.endereco.tipoBairro,
-        },
-        telefone: formData.telefone,
-        email: formData.email,
-        nfse: formData.nfse,
-        nfe: formData.nfe,
-        nfce: formData.nfce,
-        mdfe: formData.mdfe,
-        cfe: formData.cfe,
-        nfcom: formData.nfcom,
+        ...formData,
+        certificado: MOCKED_CERTIFICATE_ID, // Use mocked certificate
+        telefone: telefonePayload, // Use parsed phone object
       };
       
       const plugNotasResponse = await registerCompanyWithPlugNotas(apiPayload);
-      setSuccess(`Empresa registrada com sucesso! Protocolo: ${plugNotasResponse.protocol}`);
+      setSuccess(`Empresa registrada com sucesso! Protocolo: ${plugNotasResponse.protocol || 'N/A'}`);
 
     } catch (err) {
       setError(err.message || 'Ocorreu um erro desconhecido.');
@@ -209,63 +163,10 @@ const CompanySettings = () => {
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
-
-      {/* Certificate List */}
-      <section className="form-section">
-        <h3>Certificados Digitais</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>CNPJ</th>
-              <th>Vencimento</th>
-              <th>Ação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {certificates.map(cert => (
-              <tr key={cert.id}>
-                <td>{cert.nome}</td>
-                <td>{cert.cnpj}</td>
-                <td>{new Date(cert.vencimento).toLocaleDateString()}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setCertificateId(cert.id)}
-                    disabled={certificateId === cert.id}
-                  >
-                    {certificateId === cert.id ? 'Selecionado' : 'Selecionar'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      {/* Certificate Upload Form */}
-      <form onSubmit={handleCertificateUpload} className="company-form">
-        <section className="form-section">
-          <h3>Enviar Novo Certificado</h3>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Arquivo do Certificado (.pfx, .p12)</label>
-              <input type="file" accept=".pfx,.p12" onChange={handleFileChange} />
-            </div>
-            <div className="form-group">
-              <label>Senha do Certificado</label>
-              <input type="password" value={certificatePassword} onChange={e => setCertificatePassword(e.target.value)} />
-            </div>
-          </div>
-          <div className="form-actions">
-            <button type="submit" className="btn-secondary" disabled={uploadingCertificate}>
-              {uploadingCertificate ? 'Enviando...' : 'Enviar Certificado'}
-            </button>
-          </div>
-          {certificateId && <p>Certificado ID: {certificateId}</p>}
-        </section>
-      </form>
+      
+      <div className="alert alert-warning">
+        <strong>Atenção:</strong> O upload de certificado está desabilitado. Um certificado de teste está sendo usado automaticamente.
+      </div>
 
       <form onSubmit={handleSubmit} className="company-form">
         {/* Basic Info */}
@@ -281,7 +182,7 @@ const CompanySettings = () => {
           </div>
           <div className="form-row">
             <div className="form-group"><label>Inscrição Estadual</label><input type="text" value={formData.inscricao_estadual} onChange={e => handleInputChange('inscricao_estadual', e.target.value)} /></div>
-            <div className="form-group"><label>Telefone</label><input type="text" value={formData.telefone} onChange={e => handleInputChange('telefone', e.target.value)} /></div>
+            <div className="form-group"><label>Telefone (com DDD)</label><input type="text" value={formData.telefone} onChange={e => handleInputChange('telefone', e.target.value)} /></div>
           </div>
           <div className="form-row">
             <div className="form-group"><label>Email</label><input type="email" value={formData.email} onChange={e => handleInputChange('email', e.target.value)} required /></div>
