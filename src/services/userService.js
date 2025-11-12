@@ -1,58 +1,67 @@
 import { supabase } from './supabase';
 
-/**
- * Service for User Management, interacting with Supabase Edge Functions.
- */
+const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
-/**
- * Fetches all users with their profiles by calling the 'list-users' function.
- * @returns {Promise<Array>} A list of users.
- */
+export const signup = async (name, email, password, company_name) => {
+  const response = await fetch(`${API_URL}/signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({ name, email, password, company_name }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro ao cadastrar.');
+  }
+
+  return data;
+};
+
+export const login = async (email, password) => {
+  const response = await fetch(`${API_URL}/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro ao fazer login.');
+  }
+
+  if (data.token) {
+    localStorage.setItem('supabase.token', data.token);
+  }
+
+  return data;
+};
+
+export const logout = async () => {
+    localStorage.removeItem('supabase.token');
+    // No need to call a server function unless we have session invalidation
+    return Promise.resolve();
+};
+
+// TODO: Re-implement user management functions using Supabase's Management API
+// The functions below are placeholders and will not work until the backend is adjusted.
+
 export const getUsers = async () => {
-  const { data, error } = await supabase.functions.invoke('list-users');
-
-  if (error) {
-    console.error('Error fetching users:', error);
-    throw error;
-  }
-
-  return data;
+  console.warn('getUsers is not implemented yet with Supabase Auth.');
+  return [];
 };
-
-/**
- * Invites a new user by email with a specific role.
- * @param {string} email The email of the user to invite.
- * @param {string} role The role to assign to the new user.
- * @returns {Promise<object>} The result of the invitation.
- */
 export const inviteUser = async (email, role) => {
-  const { data, error } = await supabase.functions.invoke('invite-user', {
-    body: { email, role },
-  });
-
-  if (error) {
-    console.error('Error inviting user:', error);
-    throw error;
-  }
-
-  return data;
+  console.warn('inviteUser is not implemented yet with Supabase Auth.');
+  return null;
 };
-
-/**
- * Updates the role of a specific user.
- * @param {string} userId The ID of the user to update.
- * @param {string} role The new role to assign.
- * @returns {Promise<object>} The updated profile data.
- */
-export const updateUserRole = async (userId, role) => {
-  const { data, error } = await supabase.functions.invoke('update-user-role', {
-    body: { userId, role },
-  });
-
-  if (error) {
-    console.error('Error updating user role:', error);
-    throw error;
-  }
-
-  return data;
+export const updateUserRole = async (userId, newRole) => {
+  console.warn('updateUserRole is not implemented yet with Supabase Auth.');
+  return null;
 };

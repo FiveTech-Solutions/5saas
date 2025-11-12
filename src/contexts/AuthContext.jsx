@@ -1,77 +1,56 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { jwtDecode } from 'jwt-decode';
+import { logout as logoutService } from '../services/userService';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const handleSignOut = () => {
-    supabase.auth.signOut();
-    // No need to manually set states to null, onAuthStateChange will handle it
-  };
-
   useEffect(() => {
-    // Initial session and profile fetch
-    const getSessionAndProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(userProfile);
-      }
-      setLoading(false);
-    };
-
-    getSessionAndProfile();
-
-    // Listener for Supabase auth events (SIGNED_IN, SIGNED_OUT)
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          setProfile(userProfile);
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('supabase.token');
+      if (token) {
+        const decodedToken = jwtDecode(token);
+        // Check if token is expired
+        if (decodedToken.exp * 1000 > Date.now()) {
+          const userData = {
+            id: decodedToken.sub,
+            email: decodedToken.email,
+            role: decodedToken.role,
+            company_id: decodedToken.company_id
+          };
+          setUser(userData);
+          setIsAuthenticated(true);
         } else {
-          setProfile(null);
+          // Token is expired
+          localStorage.removeItem('supabase.token');
         }
       }
-    );
-
-    // Listener for our custom session expired event from Axios interceptor
-    const handleSessionExpired = () => {
-      console.log('Handling session-expired event. Signing out.');
-      handleSignOut();
-    };
-    window.addEventListener('session-expired', handleSessionExpired);
-
-    // Cleanup function
-    return () => {
-      authListener.subscription.unsubscribe();
-      window.removeEventListener('session-expired', handleSessionExpired);
-    };
+    } catch (error) {
+      console.error('Error processing token:', error);
+      localStorage.removeItem('supabase.token');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  const logout = async () => {
+    await logoutService();
+    setUser(null);
+    setIsAuthenticated(false);
+    // Optional: redirect to login page
+    window.location.href = '/';
+  };
+
   const value = {
-    session,
     user,
-    profile,
-    signOut: handleSignOut, // Expose the sign out function
+    isAuthenticated,
+    logout,
+    profile: user
   };
 
   return (

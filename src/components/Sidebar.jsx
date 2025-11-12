@@ -2,15 +2,19 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Sidebar.css';
-
-// Simple icons as placeholders
-const HomeIcon = () => <span>📄</span>;
-const AddIcon = () => <span>➕</span>;
-const CompanyIcon = () => <span>🏢</span>;
-const UsersIcon = () => <span>👥</span>;
-const SettingsIcon = () => <span>⚙️</span>;
-const CustomersIcon = () => <span>📈</span>;
-
+import {
+  Description,
+  AddCircle,
+  Business,
+  People,
+  Settings,
+  TrendingUp,
+  Build,
+  AccountBalance,
+  Search,
+  AttachMoney,
+  ListAlt,
+} from '@mui/icons-material';
 
 const Sidebar = () => {
   const { logout, profile } = useAuth();
@@ -18,36 +22,67 @@ const Sidebar = () => {
   
     const handleLogout = async () => {
     await logout();
-    navigate('/auth'); // Redirect to auth page after logout
+    navigate('/auth');
   };
 
-  const navLinks = [
-    { to: '/', text: 'Minhas NFS-e', icon: <HomeIcon /> },
-    { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddIcon /> },
-    { to: '/clientes', text: 'Clientes', icon: <CustomersIcon /> },
-    { to: '/empresa/configuracoes', text: 'Empresa', icon: <CompanyIcon /> },
-  ];
+  const navLinks = {
+    'NFS-e': [
+      { to: '/', text: 'Dashboard', icon: <Description /> },
+      { to: '/nfse', text: 'Minhas NFS-e', icon: <ListAlt /> },
+      { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> },
+    ],
+    'Serviços Tomados': [
+      { to: '/servicos-tomados', text: 'Lançamentos', icon: <Build /> },
+    ],
+    'DES-IF': [
+      { to: '/des-if', text: 'Declaração', icon: <AccountBalance /> },
+    ],
+    'Administração': [
+      { to: '/admin/usuarios', text: 'Usuários', icon: <People />, role: 'admin' },
+      { to: '/admin/parametros', text: 'Parâmetros', icon: <Settings />, role: 'admin' },
+    ],
+    'Auditoria': [
+      { to: '/auditoria/simples-nacional', text: 'Simples Nacional', icon: <Search />, role: 'auditor' },
+      { to: '/auditoria/autos-infracao', text: 'Autos de Infração', icon: <Search />, role: 'auditor' },
+    ],
+    'Dívida Ativa': [
+      { to: '/divida-ativa', text: 'Controle', icon: <AttachMoney />, role: 'auditor' },
+    ],
+    'Configurações': [
+      { to: '/clientes', text: 'Clientes', icon: <TrendingUp /> },
+      { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
+      { to: '/settings', text: 'Minha Conta', icon: <Settings /> },
+    ],
+  };
 
-  // Add admin link only if user has admin role
-  if (profile?.role === 'admin') {
-    navLinks.push({ to: '/admin/usuarios', text: 'Usuários', icon: <UsersIcon /> });
-  }
-  
-  navLinks.push({ to: '/settings', text: 'Configurações', icon: <SettingsIcon /> });
+  const renderNavLinks = () => {
+    return Object.entries(navLinks).map(([module, links]) => {
+      const filteredLinks = links.filter(link => !link.role || link.role === profile?.role);
+      if (filteredLinks.length === 0) {
+        return null;
+      }
+      return (
+        <div key={module} className="sidebar-module">
+          <h3 className="sidebar-module-title">{module}</h3>
+          {filteredLinks.map((link) => (
+            <NavLink key={link.to} to={link.to} className="sidebar-link">
+              {link.icon}
+              <span>{link.text}</span>
+            </NavLink>
+          ))}
+        </div>
+      );
+    });
+  };
 
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <h1 className="sidebar-logo">5SaaS</h1>
+        <h1 className="sidebar-logo">Five-SaaS</h1>
       </div>
       <nav className="sidebar-nav">
-        {navLinks.map((link) => (
-          <NavLink key={link.to} to={link.to} className="sidebar-link">
-            {link.icon}
-            <span>{link.text}</span>
-          </NavLink>
-        ))}
+        {renderNavLinks()}
       </nav>
       <div className="sidebar-footer">
         <div className="user-profile">
@@ -62,3 +97,5 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+
+

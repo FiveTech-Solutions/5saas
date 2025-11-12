@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createCustomer } from '../services/customerService';
+import { getAddressFromCEP } from '../services/viaCepService';
 // Re-using modal styles from UserManagement
 import '../pages/UserManagement.css'; 
 
@@ -25,6 +26,23 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerCreated }) => {
     }
   };
 
+  const handleCepBlur = async (cep) => {
+    const address = await getAddressFromCEP(cep);
+    if (address) {
+      setFormData(prev => ({
+        ...prev,
+        endereco: {
+          ...prev.endereco,
+          cep: address.cep,
+          logradouro: address.logradouro,
+          bairro: address.bairro,
+          cidade: address.localidade,
+          estado: address.uf,
+        },
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -34,7 +52,7 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerCreated }) => {
       onCustomerCreated(newCustomer);
       onClose();
       // Reset form for next time
-      setFormData({ razao_social: '', cpf_cnpj: '', email: '', endereco: {} });
+      setFormData({ razao_social: '', cpf_cnpj: '', email: '', endereco: { cep: '', logradouro: '', numero: '', bairro: '', cidade: '', estado: '' } });
     } catch (err) {
       setError(err.message || 'Falha ao criar cliente.');
       console.error(err);
@@ -66,7 +84,27 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerCreated }) => {
           {/* Simplified address fields for quick add */}
           <div className="form-group">
             <label>CEP</label>
-            <input type="text" value={formData.endereco.cep} onChange={e => handleInputChange('endereco.cep', e.target.value)} />
+            <input type="text" value={formData.endereco.cep} onChange={e => handleInputChange('endereco.cep', e.target.value)} onBlur={e => handleCepBlur(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Logradouro</label>
+            <input type="text" value={formData.endereco.logradouro} onChange={e => handleInputChange('endereco.logradouro', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Número</label>
+            <input type="text" value={formData.endereco.numero} onChange={e => handleInputChange('endereco.numero', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Bairro</label>
+            <input type="text" value={formData.endereco.bairro} onChange={e => handleInputChange('endereco.bairro', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Cidade</label>
+            <input type="text" value={formData.endereco.cidade} onChange={e => handleInputChange('endereco.cidade', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Estado</label>
+            <input type="text" value={formData.endereco.estado} onChange={e => handleInputChange('endereco.estado', e.target.value)} />
           </div>
           
           <div className="modal-actions">

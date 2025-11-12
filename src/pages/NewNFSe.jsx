@@ -4,7 +4,9 @@ import { createNFSe as createNFSeExternal } from '../services/nfseService';
 import { createNfse as createNfseSupabase } from '../services/nfseSupabaseService';
 import { getCustomers } from '../services/customerService';
 import { getCompany } from '../services/companyService'; // Import getCompany
+import { getAddressFromCEP } from '../services/viaCepService';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppState } from '../contexts/StateContext'; // Import useAppState
 import CustomerSelector from '../components/CustomerSelector';
 import AddCustomerModal from '../components/AddCustomerModal';
 import './NewNFSe.css';
@@ -14,17 +16,21 @@ const generateIdIntegracao = () => `ID-${Date.now()}`;
 const NewNFSe = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { getPageData, setPageData } = useAppState(); // Use the state hook
+
+  const pageState = getPageData('newNFSe') || {};
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pageLoading, setPageLoading] = useState(true); // For initial data load
 
   const [customers, setCustomers] = useState([]);
   const [isCustomerModalOpen, setCustomerModalOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(pageState.selectedCustomer || null);
   
   const [company, setCompany] = useState(null); // State to hold company data
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(pageState.formData || {
     idIntegracao: generateIdIntegracao(),
     prestador: { cpfCnpj: '' }, // Initially empty
     tomador: {
@@ -43,6 +49,11 @@ const NewNFSe = () => {
       },
     ],
   });
+
+  // Save state to context whenever it changes
+  useEffect(() => {
+    setPageData('newNFSe', { formData, selectedCustomer });
+  }, [formData, selectedCustomer, setPageData]);
 
   // Load initial data (company and customers)
   useEffect(() => {
@@ -120,6 +131,27 @@ const NewNFSe = () => {
       ref[keys[keys.length - 1]] = value;
       return current;
     });
+  };
+
+  const handleCepBlur = async (cep) => {
+    const address = await getAddressFromCEP(cep);
+    if (address) {
+      setFormData(prev => ({
+        ...prev,
+        tomador: {
+          ...prev.tomador,
+          endereco: {
+            ...prev.tomador.endereco,
+            cep: address.cep,
+            logradouro: address.logradouro,
+            bairro: address.bairro,
+            descricaoCidade: address.localidade,
+            estado: address.uf,
+            codigoCidade: address.ibge,
+          },
+        },
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -220,6 +252,36 @@ const NewNFSe = () => {
               <div className="form-group">
                 <label>Email *</label>
                 <input type="email" value={formData.tomador.email} onChange={(e) => handleInputChange('tomador.email', e.target.value)} required readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>CEP</label>
+                <input type="text" value={formData.tomador.endereco.cep} onBlur={(e) => handleCepBlur(e.target.value)} onChange={(e) => handleInputChange('tomador.endereco.cep', e.target.value)} readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Logradouro</label>
+                <input type="text" value={formData.tomador.endereco.logradouro} onChange={(e) => handleInputChange('tomador.endereco.logradouro', e.target.value)} readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
+              </div>
+              <div className="form-group">
+                <label>Número</label>
+                <input type="text" value={formData.tomador.endereco.numero} onChange={(e) => handleInputChange('tomador.endereco.numero', e.target.value)} readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Bairro</label>
+                <input type="text" value={formData.tomador.endereco.bairro} onChange={(e) => handleInputChange('tomador.endereco.bairro', e.target.value)} readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
+              </div>
+              <div className="form-group">
+                <label>Cidade</label>
+                <input type="text" value={formData.tomador.endereco.descricaoCidade} onChange={(e) => handleInputChange('tomador.endereco.descricaoCidade', e.target.value)} readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
+              </div>
+              <div className="form-group">
+                <label>Estado</label>
+                <input type="text" value={formData.tomador.endereco.estado} onChange={(e) => handleInputChange('tomador.endereco.estado', e.target.value)} readOnly={isTomadorLocked} className={isTomadorLocked ? 'readonly-input' : ''} />
               </div>
             </div>
           </section>

@@ -1,19 +1,19 @@
 import axios from 'axios';
-import { supabase } from './supabase'; // Import supabase client
 
-const API_BASE_URL = 'https://api.sandbox.plugnotas.com.br';
+const API_BASE_URL = import.meta.env.VITE_SPEED_BASE_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
 });
 
 // --- Request Interceptor ---
-// Injects the API Key and the Supabase JWT into every request.
+// Injects the API Key and our custom JWT into every request.
 api.interceptors.request.use(
-  async (config) => {
+  (config) => {
     // 1. Add API Key from environment variable
     const apiKey = import.meta.env.VITE_SPEED_API_KEY;
     if (apiKey) {
@@ -22,10 +22,10 @@ api.interceptors.request.use(
       console.error("VITE_SPEED_API_KEY is not defined in .env file.");
     }
 
-    // 2. Add Supabase JWT for authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      config.headers['Authorization'] = `Bearer ${session.access_token}`;
+    // 2. Add our custom JWT for authentication
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
 
     return config;
@@ -42,9 +42,12 @@ api.interceptors.response.use(
   (error) => {
     // Check if the error is a 401 Unauthorized
     if (error.response && error.response.status === 401) {
-      console.warn('Session expired or invalid. Triggering logout.');
-      // Dispatch a custom event that the AuthContext can listen for
-      window.dispatchEvent(new Event('session-expired'));
+      console.warn('Session expired or invalid. Logging out.');
+      // Clean up local storage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      // Redirect to login page
+      window.location.href = '/';
     }
     
     // Return the error to be handled by the calling function as well
