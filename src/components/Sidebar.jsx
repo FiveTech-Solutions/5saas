@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthorization } from '../hooks/useAuthorization';
 import './Sidebar.css';
@@ -26,7 +26,6 @@ const Sidebar = () => {
   const { logout, user } = useAuth();
   const { 
     getUserProfile, 
-    getAvailableRoutes,
     canManageUsers,
     canAudit,
     canEmitNFSe,
@@ -34,24 +33,9 @@ const Sidebar = () => {
     canManageDebt
   } = useAuthorization();
   const navigate = useNavigate();
-  
-  // State para controlar qual seção está aberta. null se nenhuma estiver aberta.
-  const [expandedSection, setExpandedSection] = useState(null);
-  
-  const userProfile = getUserProfile();
-  
-  const handleLogout = async () => {
-    await logout();
-    navigate('/auth');
-  };
+  const location = useLocation();
 
-  // Função para toggle do colapso de seções
-  const toggleSection = (sectionName) => {
-    setExpandedSection(prev => (prev === sectionName ? null : sectionName));
-  };
-
-  // Definição dos módulos com base em permissões
-  const getNavLinks = () => {
+  const getNavLinks = useCallback(() => {
     const links = {
       'NFS-e': [],
       'Serviços Tomados': [],
@@ -66,10 +50,8 @@ const Sidebar = () => {
       ],
     };
 
-    // Dashboard sempre disponível
     links['NFS-e'].push({ to: '/', text: 'Dashboard', icon: <Description /> });
 
-    // NFS-e para admin e operador
     if (canEmitNFSe()) {
       links['NFS-e'].push(
         { to: '/nfse', text: 'Minhas NFS-e', icon: <ListAlt /> },
@@ -77,35 +59,25 @@ const Sidebar = () => {
       );
     }
 
-    // Serviços tomados para admin e operador
     if (canEmitNFSe()) {
       links['Serviços Tomados'].push(
         { to: '/servicos-tomados', text: 'Lançamentos', icon: <Build /> },
-        { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> } // New link
+        { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> }
       );
     }
 
-    // DES-IF para admin e operador
     if (canEmitNFSe()) {
-      links['DES-IF'].push(
-        { to: '/des-if', text: 'Declaração', icon: <AccountBalance /> }
-      );
+      links['DES-IF'].push({ to: '/des-if', text: 'Declaração', icon: <AccountBalance /> });
     }
 
-    // Administração apenas para admin
     if (canManageUsers()) {
-      links['Administração'].push(
-        { to: '/admin/users', text: 'Usuários', icon: <People /> }
-      );
+      links['Administração'].push({ to: '/admin/users', text: 'Usuários', icon: <People /> });
     }
     
     if (canManageParameters()) {
-      links['Administração'].push(
-        { to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> }
-      );
+      links['Administração'].push({ to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> });
     }
 
-    // Auditoria para admin e auditor
     if (canAudit()) {
       links['Auditoria'].push(
         { to: '/auditoria/simples-nacional', text: 'Simples Nacional', icon: <Assessment /> },
@@ -113,20 +85,65 @@ const Sidebar = () => {
       );
     }
 
-    // Dívida ativa para admin e auditor
     if (canManageDebt()) {
-      links['Dívida Ativa'].push(
-        { to: '/divida-ativa', text: 'Controle', icon: <AttachMoney /> }
-      );
+      links['Dívida Ativa'].push({ to: '/divida-ativa', text: 'Controle', icon: <AttachMoney /> });
     }
 
-    // Filtrar módulos vazios
     return Object.fromEntries(
       Object.entries(links).filter(([_, moduleLinks]) => moduleLinks.length > 0)
     );
-  };
+  }, [canManageUsers, canAudit, canEmitNFSe, canManageParameters, canManageDebt]);
 
   const navLinks = getNavLinks();
+
+  const getModuleForPath = useCallback((path) => {
+    let bestMatch = null;
+    let bestMatchModule = null;
+
+    for (const [module, links] of Object.entries(navLinks)) {
+      for (const link of links) {
+        if (path.startsWith(link.to)) {
+          if (!bestMatch || link.to.length > bestMatch.length) {
+            bestMatch = link.to;
+            bestMatchModule = module;
+          }
+        }
+      }
+    }
+    return bestMatchModule;
+  }, [navLinks]);
+
+  const moduleForCurrentPath = getModuleForPath(location.pathname);
+  const [overrideSection, setOverrideSection] = useState(null);
+
+  useEffect(() => {
+    setOverrideSection(null);
+  }, [location.pathname]);
+
+  let expandedSection;
+  if (overrideSection === false) {
+    expandedSection = null;
+  } else if (overrideSection) {
+    expandedSection = overrideSection;
+  } else {
+    expandedSection = moduleForCurrentPath;
+  }
+
+  const toggleSection = (sectionName) => {
+    setOverrideSection(() => {
+      if (expandedSection === sectionName) {
+        return false;
+      }
+      return sectionName;
+    });
+  };
+
+  const userProfile = getUserProfile();
+  
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth');
+  };
 
   const renderNavLinks = () => {
     return Object.entries(navLinks).map(([module, links]) => {
@@ -145,7 +162,7 @@ const Sidebar = () => {
           </div>
           <div className={`sidebar-module-links ${isOpen ? 'expanded' : 'collapsed'}`}>
             {links.map((link) => (
-              <NavLink key={link.to} to={link.to} end={link.to === '/nfse'} className="sidebar-link">
+              <NavLink key={link.to} to={link.to} end className="sidebar-link">
                 {link.icon}
                 <span>{link.text}</span>
               </NavLink>
@@ -155,7 +172,6 @@ const Sidebar = () => {
       );
     });
   };
-
 
   return (
     <aside className="sidebar">
