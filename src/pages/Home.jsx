@@ -84,8 +84,13 @@ const Home = () => {
       dailyValues[date.toISOString().split('T')[0]] = 0;
     }
     recentNotes.forEach(n => {
-      const date = new Date(n.emissao).toISOString().split('T')[0]; // Usar 'emissao' da nota
-      dailyValues[date] = (dailyValues[date] || 0) + (n.valorServico || 0);
+      if (n.emissao) {
+        const emissionDate = new Date(n.emissao);
+        if (!isNaN(emissionDate.getTime())) {
+          const date = emissionDate.toISOString().split('T')[0];
+          dailyValues[date] = (dailyValues[date] || 0) + (n.valorServico || 0);
+        }
+      }
     });
     const lineLabels = Object.keys(dailyValues).sort();
     const lineValues = lineLabels.map(label => dailyValues[label]);
