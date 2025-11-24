@@ -1,13 +1,102 @@
 // supabase/functions/signup/index.ts
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../shared/cors.ts';
-import { Buffer } from 'https://deno.land/std@0.168.0/node/buffer.ts';
-import { pbkdf2 } from 'https://deno.land/std@0.168.0/node/crypto.ts';
-import { promisify } from 'https://deno.land/std@0.168.0/node/util.ts';
 
-const pbkdf2Promise = promisify(pbkdf2);
+// Function to handle the signup process
+async function handleSignup(supabaseAdmin: SupabaseClient, companyName: string, userName: string, email: string, password: string) {
+  // 1. Create a new tenant (company)
+  const { data: tenant, error: tenantError } = await supabaseAdmin
+    .from('tenants')
+    .insert({ name: companyName })
+    .select()
+    .single();
 
+  if (tenantError) {
+    console.error('Error creating tenant:', tenantError);
+    throw new Error(`Failed to create company: ${tenantError.message}`);
+  }
+
+  // 2. Create the user in Supabase Auth
+  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true, // Auto-confirm user for simplicity. Consider sending a confirmation email in production.
+  });
+
+  if (authError) {
+    console.error('Error creating auth user:', authError);
+    // Attempt to roll back tenant creation for cleanliness
+    await supabaseAdmin.from('tenants').delete().eq('id', tenant.id);
+    throw new Error(`Failed to create user: ${authError.message}`);
+  }
+  
+  const userId = authUser.user.id;
+
+  // 3. Create the user profile in public.users, linking to the tenant
+  const { error: profileError } = await supabaseAdmin
+    .from('users')
+    .insert({
+      id: userId,
+      tenant_id: tenant.id,
+      full_name: userName,
+      role: 'admin', // The first user of a tenant is always an admin
+    });
+
+  if (profileError) {
+    console.error('Error creating user profile:', profileError);
+    // Attempt to roll back auth user and tenant
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    await supabaseAdmin.from('tenants').delete().eq('id', tenant.id);
+    throw new Error(`Failed to create user profile: ${profileError.message}`);
+  }
+
+  // 4. Fetch the 'basic' plan to create the initial subscription
+  const { data: basicPlan, error: planError } = await supabaseAdmin
+    .from('plans')
+    .select('id')
+    .eq('name', 'basic')
+    .single();
+
+  if (planError || !basicPlan) {
+    console.error('Error fetching basic plan:', planError);
+    // Roll back
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    await supabaseAdmin.from('tenants').delete().eq('id', tenant.id);
+    throw new Error('Basic plan not found. System is not configured correctly.');
+  }
+
+  // 5. Create the initial subscription for the tenant (e.g., 15-day trial)
+  const trialEnds = new Date();
+  trialEnds.setDate(trialEnds.getDate() + 15);
+
+  const { error: subscriptionError } = await supabaseAdmin
+    .from('subscriptions')
+    .insert({
+      tenant_id: tenant.id,
+      plan_id: basicPlan.id,
+      status: 'trialing',
+      billing_cycle: 'monthly', // Default billing cycle
+      trial_ends_at: trialEnds.toISOString(),
+    });
+
+  if (subscriptionError) {
+    console.error('Error creating subscription:', subscriptionError);
+    // Roll back
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    await supabaseAdmin.from('tenants').delete().eq('id', tenant.id);
+    // The user profile will be deleted by cascade from the auth user deletion.
+    throw new Error(`Failed to create initial subscription: ${subscriptionError.message}`);
+  }
+
+  return {
+    message: 'User and company signed up successfully.',
+    userId: userId,
+    tenantId: tenant.id,
+  };
+}
+
+// Main server logic
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -17,78 +106,27 @@ serve(async (req) => {
     const { name, email, password, company_name } = await req.json();
 
     if (!name || !email || !password || !company_name) {
-      return new Response(JSON.stringify({ error: 'Nome, email, senha e nome da empresa são obrigatórios.' }), {
+      return new Response(JSON.stringify({ error: 'Name, email, password, and company name are required.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
     }
 
-    const supabaseClient = createClient(
+    // Create a Supabase client with the service role key to perform admin actions
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      // Use the SERVICE_ROLE_KEY to be able to create companies and users
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Check if user already exists
-    const { data: existingUser } = await supabaseClient
-      .from('users')
-      .select('email')
-      .eq('email', email)
-      .single();
+    const result = await handleSignup(supabaseAdmin, company_name, name, email, password);
 
-    if (existingUser) {
-      return new Response(JSON.stringify({ error: 'Usuário com este email já existe.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 409, // Conflict
-      });
-    }
-
-    // 1. Create a new company
-    const { data: newCompany, error: companyError } = await supabaseClient
-      .from('companies')
-      .insert({ name: company_name })
-      .select()
-      .single();
-
-    if (companyError) {
-      throw companyError;
-    }
-
-    // 2. Hash the password
-    const salt = crypto.randomUUID();
-    const hash = await pbkdf2Promise(password, salt, 100000, 64, 'sha512');
-    const password_hash = `${salt}:${hash.toString('hex')}`;
-
-    // 3. Create a new user and link to the company
-    const { data: newUser, error: userError } = await supabaseClient
-      .from('users')
-      .insert({
-        name,
-        email,
-        password_hash,
-        company_id: newCompany.id,
-        role: 'admin', // First user is an admin
-      })
-      .select()
-      .single();
-
-    if (userError) {
-      // If user creation fails, we should ideally roll back the company creation.
-      // For simplicity here, we'll just log the error.
-      // In a real-world scenario, use a database transaction.
-      console.error('Failed to create user after creating company. Company ID:', newCompany.id);
-      throw userError;
-    }
-
-    return new Response(JSON.stringify({
-      user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role, company_id: newUser.company_id }
-    }), {
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 201,
     });
 
   } catch (error) {
+    console.error('Unhandled error in signup function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

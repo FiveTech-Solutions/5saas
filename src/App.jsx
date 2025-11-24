@@ -1,14 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import MainLayout from './layouts/MainLayout'; // Import the new layout
+import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import NewNFSe from './pages/NewNFSe';
 import NFSeDetails from './pages/NFSeDetails';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
-import CompanySettings from './pages/CompanySettings'; // Import new page
-import UserManagement from './pages/UserManagement'; // Import new page
-import Customers from './pages/Customers'; // Import new page
+import CompanySettings from './pages/CompanySettings';
+import UserManagement from './pages/UserManagement';
+import Customers from './pages/Customers';
 import ServicosTomados from './pages/ServicosTomados';
 import Desif from './pages/Desif';
 import AdminParametros from './pages/AdminParametros';
@@ -16,46 +16,55 @@ import AuditoriaSimplesNacional from './pages/AuditoriaSimplesNacional';
 import AuditoriaAutosInfracao from './pages/AuditoriaAutosInfracao';
 import DividaAtiva from './pages/DividaAtiva';
 import MinhasNFSe from './pages/MinhasNFSe';
-import ServiceManagement from './pages/ServiceManagement'; // Import new page
-import AdminTools from './components/AdminTools'; // Temporário para atualizar usuário
+import ServiceManagement from './pages/ServiceManagement';
 import './App.css';
 
-// Componente para proteger rotas que exigem apenas autenticação
+// A generic protected route that just checks for authentication.
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? children : <Navigate to="/auth" replace />;
 };
 
-// Componente para proteger rotas baseadas em perfil (role)
-const RoleProtectedRoute = ({ allowedRoles, children }) => {
+// Protects routes based on user role (e.g., 'admin').
+const RoleProtectedRoute = ({ role, children }) => {
   const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
+  // Using the new `isAdmin` flag or checking the role directly.
+  if (user?.role !== role) {
+    return <Navigate to="/" replace />; // Redirect if role doesn't match.
+  }
 
-  if (!allowedRoles.includes(user?.user_role)) {
-    // Redireciona para a home se não tiver a permissão
+  return children;
+};
+
+// Protects routes based on subscription features (e.g., 'NFE').
+const FeatureProtectedRoute = ({ feature, children }) => {
+  const { isAuthenticated, features } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (!features.includes(feature)) {
+    // Optional: Redirect to an "upgrade plan" page in the future.
+    // For now, redirect to home.
     return <Navigate to="/" replace />;
   }
 
   return children;
 };
 
+
 function App() {
   const { loading } = useAuth();
 
-  // Mostrar loading enquanto verifica autenticação
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        fontSize: '18px'
-      }}>
-        Carregando...
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '18px' }}>
+        Carregando sistema...
       </div>
     );
   }
@@ -63,76 +72,66 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Rota pública de autenticação */}
+        {/* Public authentication route */}
         <Route path="/auth" element={<Auth />} />
-        
-        {/* Rota temporária de admin */}
-        <Route path="/update-user" element={<AdminTools />} />
 
-        {/* Agrupamento de rotas protegidas que usam o MainLayout */}
+        {/* Protected routes using the MainLayout */}
         <Route 
+          path="/"
           element={
             <ProtectedRoute>
               <MainLayout />
             </ProtectedRoute>
           }
         >
-          {/* Rotas para todos os usuários autenticados */}
-          <Route path="/" element={<Home />} />
-          <Route path="/nfse" element={<MinhasNFSe />} />
-          <Route path="/nfse/new" element={<NewNFSe />} />
-          <Route path="/nfse/:id" element={<NFSeDetails />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/empresa/configuracoes" element={<CompanySettings />} />
-          <Route path="/clientes" element={<Customers />} />
-          <Route path="/servicos-tomados" element={<ServicosTomados />} />
-          <Route path="/servicos/*" element={<ServiceManagement />} /> {/* New Service Management Route */}
-          <Route path="/des-if" element={<Desif />} />
+          {/* Routes available to all authenticated users */}
+          <Route index element={<Home />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="clientes" element={<Customers />} />
+          
+          {/* NFS-e Routes (Basic Plan) */}
+          <Route path="nfse" element={<FeatureProtectedRoute feature="NFSE"><MinhasNFSe /></FeatureProtectedRoute>} />
+          <Route path="nfse/new" element={<FeatureProtectedRoute feature="NFSE"><NewNFSe /></FeatureProtectedRoute>} />
+          <Route path="nfse/:id" element={<FeatureProtectedRoute feature="NFSE"><NFSeDetails /></FeatureProtectedRoute>} />
+          <Route path="servicos-tomados" element={<FeatureProtectedRoute feature="NFSE"><ServicosTomados /></FeatureProtectedRoute>} />
+          <Route path="des-if" element={<FeatureProtectedRoute feature="NFSE"><Desif /></FeatureProtectedRoute>} />
 
-          {/* Rotas com permissões específicas */}
+          {/* NF-e / NFC-e Routes (Standard Plan) */}
           <Route 
-            path="/admin/users"
-            element={
-              <RoleProtectedRoute allowedRoles={['administrador']}>
-                <UserManagement />
-              </RoleProtectedRoute>
-            }
+            path="servicos/*" 
+            element={<FeatureProtectedRoute feature="NFE"><ServiceManagement /></FeatureProtectedRoute>} 
+          />
+
+          {/* Admin Routes (Role-based) */}
+          <Route 
+            path="admin/users"
+            element={<RoleProtectedRoute role="admin"><UserManagement /></RoleProtectedRoute>}
           />
           <Route 
-            path="/admin/parametros"
-            element={
-              <RoleProtectedRoute allowedRoles={['administrador']}>
-                <AdminParametros />
-              </RoleProtectedRoute>
-            }
+            path="admin/parametros"
+            element={<RoleProtectedRoute role="admin"><AdminParametros /></RoleProtectedRoute>}
           />
           <Route 
-            path="/auditoria/simples-nacional"
-            element={
-              <RoleProtectedRoute allowedRoles={['administrador', 'auditor']}>
-                <AuditoriaSimplesNacional />
-              </RoleProtectedRoute>
-            }
+            path="empresa/configuracoes"
+            element={<RoleProtectedRoute role="admin"><CompanySettings /></RoleProtectedRoute>}
+          />
+
+          {/* AI / Premium Routes (Feature-based) */}
+          <Route 
+            path="auditoria/simples-nacional"
+            element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaSimplesNacional /></FeatureProtectedRoute>}
           />
           <Route 
-            path="/auditoria/autos-infracao"
-            element={
-              <RoleProtectedRoute allowedRoles={['administrador', 'auditor']}>
-                <AuditoriaAutosInfracao />
-              </RoleProtectedRoute>
-            }
+            path="auditoria/autos-infracao"
+            element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaAutosInfracao /></FeatureProtectedRoute>}
           />
           <Route 
-            path="/divida-ativa"
-            element={
-              <RoleProtectedRoute allowedRoles={['administrador', 'auditor']}>
-                <DividaAtiva />
-              </RoleProtectedRoute>
-            }
+            path="divida-ativa"
+            element={<FeatureProtectedRoute feature="AI_TOOLS"><DividaAtiva /></FeatureProtectedRoute>}
           />
         </Route>
 
-        {/* Redirecionamento para rotas não encontradas */}
+        {/* Fallback redirect */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>

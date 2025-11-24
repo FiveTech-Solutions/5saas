@@ -4,142 +4,108 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAuthorization } from '../hooks/useAuthorization';
 import './Sidebar.css';
 import {
+  Dashboard,
   Description,
   AddCircle,
   Business,
   People,
   Settings,
-  TrendingUp,
   Build,
-  AccountBalance,
-  Search,
-  AttachMoney,
   ListAlt,
   AdminPanelSettings,
-  Gavel,
-  Assessment,
   ExpandLess,
   ExpandMore,
+  Receipt,
+  Contactless,
+  AutoAwesome
 } from '@mui/icons-material';
 
 const Sidebar = () => {
   const { logout, user } = useAuth();
-  const { 
-    getUserProfile, 
-    canManageUsers,
-    canAudit,
-    canEmitNFSe,
-    canManageParameters,
-    canManageDebt
-  } = useAuthorization();
+  const { hasFeature, isAdmin } = useAuthorization();
   const navigate = useNavigate();
   const location = useLocation();
 
   const getNavLinks = useCallback(() => {
-    const links = {
+    const modules = {
+      'Geral': [
+        { to: '/', text: 'Dashboard', icon: <Dashboard /> },
+      ],
       'NFS-e': [],
-      'Serviços Tomados': [],
-      'DES-IF': [],
+      'NF-e': [],
+      'NFC-e': [],
+      'Ferramentas IA': [],
       'Administração': [],
-      'Auditoria': [],
-      'Dívida Ativa': [],
       'Configurações': [
-        { to: '/clientes', text: 'Clientes', icon: <TrendingUp /> },
+        { to: '/clientes', text: 'Clientes', icon: <People /> },
         { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
         { to: '/settings', text: 'Minha Conta', icon: <Settings /> },
       ],
     };
 
-    links['NFS-e'].push({ to: '/', text: 'Dashboard', icon: <Description /> });
-
-    if (canEmitNFSe()) {
-      links['NFS-e'].push(
-        { to: '/nfse', text: 'Minhas NFS-e', icon: <ListAlt /> },
-        { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> }
-      );
-    }
-
-    if (canEmitNFSe()) {
-      links['Serviços Tomados'].push(
-        { to: '/servicos-tomados', text: 'Lançamentos', icon: <Build /> },
+    if (hasFeature('NFSE')) {
+      modules['NFS-e'].push(
+        { to: '/nfse', text: 'Minhas NFS-e', icon: <Description /> },
+        { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> },
+        { to: '/servicos-tomados', text: 'Serviços Tomados', icon: <Build /> },
         { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> }
       );
     }
-
-    if (canEmitNFSe()) {
-      links['DES-IF'].push({ to: '/des-if', text: 'Declaração', icon: <AccountBalance /> });
-    }
-
-    if (canManageUsers()) {
-      links['Administração'].push({ to: '/admin/users', text: 'Usuários', icon: <People /> });
+    
+    if (hasFeature('NFE')) {
+      modules['NF-e'].push(
+        { to: '/nfe', text: 'Minhas NF-e', icon: <Receipt /> },
+        { to: '/nfe/new', text: 'Nova NF-e', icon: <AddCircle /> }
+      );
     }
     
-    if (canManageParameters()) {
-      links['Administração'].push({ to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> });
+    if (hasFeature('NFCE')) {
+      modules['NFC-e'].push(
+        { to: '/nfce', text: 'Minhas NFC-e', icon: <Contactless /> },
+        { to: '/nfce/new', text: 'Nova NFC-e', icon: <AddCircle /> }
+      );
     }
-
-    if (canAudit()) {
-      links['Auditoria'].push(
-        { to: '/auditoria/simples-nacional', text: 'Simples Nacional', icon: <Assessment /> },
-        { to: '/auditoria/autos-infracao', text: 'Autos de Infração', icon: <Gavel /> }
+    
+    if (hasFeature('AI_TOOLS')) {
+      modules['Ferramentas IA'].push(
+        { to: '/ai/insights', text: 'Análise Inteligente', icon: <AutoAwesome /> }
       );
     }
 
-    if (canManageDebt()) {
-      links['Dívida Ativa'].push({ to: '/divida-ativa', text: 'Controle', icon: <AttachMoney /> });
+    if (isAdmin()) {
+      modules['Administração'].push(
+        { to: '/admin/users', text: 'Usuários', icon: <People /> },
+        { to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> }
+      );
     }
 
+    // Filtra módulos que não têm links
     return Object.fromEntries(
-      Object.entries(links).filter(([_, moduleLinks]) => moduleLinks.length > 0)
+      Object.entries(modules).filter(([, links]) => links.length > 0)
     );
-  }, [canManageUsers, canAudit, canEmitNFSe, canManageParameters, canManageDebt]);
+  }, [hasFeature, isAdmin]);
 
   const navLinks = getNavLinks();
 
   const getModuleForPath = useCallback((path) => {
-    let bestMatch = null;
-    let bestMatchModule = null;
-
     for (const [module, links] of Object.entries(navLinks)) {
-      for (const link of links) {
-        if (path.startsWith(link.to)) {
-          if (!bestMatch || link.to.length > bestMatch.length) {
-            bestMatch = link.to;
-            bestMatchModule = module;
-          }
-        }
+      if (links.some(link => path.startsWith(link.to))) {
+        return module;
       }
     }
-    return bestMatchModule;
+    return 'Geral'; // Módulo padrão
   }, [navLinks]);
 
-  const moduleForCurrentPath = getModuleForPath(location.pathname);
-  const [overrideSection, setOverrideSection] = useState(null);
+  const [expandedSection, setExpandedSection] = useState(getModuleForPath(location.pathname));
 
   useEffect(() => {
-    setOverrideSection(null);
-  }, [location.pathname]);
-
-  let expandedSection;
-  if (overrideSection === false) {
-    expandedSection = null;
-  } else if (overrideSection) {
-    expandedSection = overrideSection;
-  } else {
-    expandedSection = moduleForCurrentPath;
-  }
+    setExpandedSection(getModuleForPath(location.pathname));
+  }, [location.pathname, getModuleForPath]);
 
   const toggleSection = (sectionName) => {
-    setOverrideSection(() => {
-      if (expandedSection === sectionName) {
-        return false;
-      }
-      return sectionName;
-    });
+    setExpandedSection(prev => (prev === sectionName ? null : sectionName));
   };
 
-  const userProfile = getUserProfile();
-  
   const handleLogout = async () => {
     await logout();
     navigate('/auth');
@@ -162,7 +128,7 @@ const Sidebar = () => {
           </div>
           <div className={`sidebar-module-links ${isOpen ? 'expanded' : 'collapsed'}`}>
             {links.map((link) => (
-              <NavLink key={link.to} to={link.to} end className="sidebar-link">
+              <NavLink key={link.to} to={link.to} end={link.to === '/'} className="sidebar-link">
                 {link.icon}
                 <span>{link.text}</span>
               </NavLink>
@@ -185,9 +151,9 @@ const Sidebar = () => {
         <div className="user-profile">
           <div className="user-info">
             <span className="user-email">{user?.email || 'Usuário'}</span>
-            {userProfile && (
-              <span className={`user-role role-${user?.role}`}>
-                {userProfile.name}
+            {user?.role && (
+              <span className={`user-role role-${user.role}`}>
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
               </span>
             )}
           </div>

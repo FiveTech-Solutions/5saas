@@ -1,112 +1,89 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../services/supabase';
-import { getUserProfile, logUserAction } from '../services/userService';
+import { getUserSessionData, logout as logoutService } from '../services/userService';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // This state will hold the entire session object: { user, tenant, subscription }
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchAndSetSession = async (user) => {
+    if (!user) {
+      setSession(null);
+      return;
+    }
+    try {
+      const sessionData = await getUserSessionData(user.id);
+      // Add the user's email from the auth object, as it's not in our public profile table
+      if (sessionData) {
+        sessionData.user.email = user.email;
+      }
+      setSession(sessionData);
+    } catch (error) {
+      console.error("Failed to fetch user session data:", error);
+      setSession(null); // Clear session on error
+    }
+  };
+
   useEffect(() => {
-    const getSession = async () => {
+    const initializeSession = async () => {
       setLoading(true);
-      try {
-                  const { data: { session } } = await supabase.auth.getSession();
-                
-                if (session?.user) {
-                  const profile = await getUserProfile(session.user.id);
-                  if (profile && !profile.error) { // Check for error property
-                    setUser({ id: session.user.id, email: session.user.email, ...profile });
-                    setIsAuthenticated(true);
-                  } else {
-                    console.warn('Profile not found or error fetching profile:', profile?.error);
-                    setUser(null);
-                    setIsAuthenticated(false);
-                  }
-                }
-              } catch (error) {
-                console.error('Erro ao obter sessão:', error);
-                setUser(null);
-                setIsAuthenticated(false);
-              } finally {
-                setLoading(false);
-              }
-            };
-        
-            getSession();
-        
-            const { data: { subscription } } = supabase.auth.onAuthStateChange(
-              async (event, session) => {
-                setLoading(true);
-                if (event === 'SIGNED_IN' && session?.user) {
-                  const profile = await getUserProfile(session.user.id);
-                  if (profile && !profile.error) { // Check for error property
-                    setUser({ id: session.user.id, email: session.user.email, ...profile });
-                    setIsAuthenticated(true);
-                  } else {
-                    console.warn('Profile not found or error fetching profile on SIGNED_IN:', profile?.error);
-                    setUser(null);
-                    setIsAuthenticated(false);
-                  }
-                } else if (event === 'SIGNED_OUT') {
-                  setUser(null);
-                  setIsAuthenticated(false);
-                } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-                  const profile = await getUserProfile(session.user.id);
-                  if (profile && !profile.error) { // Check for error property
-                    setUser({ id: session.user.id, email: session.user.email, ...profile });
-                  } else {
-                    console.warn('Profile not found or error fetching profile on TOKEN_REFRESHED:', profile?.error);
-                    // Keep existing user state if refresh failed but user was already set
-                  }
-                }
-                setLoading(false);
-              }
-            );
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (currentSession?.user) {
+        await fetchAndSetSession(currentSession.user);
+      }
+      setLoading(false);
+    };
+
+    initializeSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        setLoading(true);
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          await fetchAndSetSession(newSession.user);
+        } else if (event === 'SIGNED_OUT') {
+          setSession(null);
+        }
+        // TOKEN_REFRESHED events don't require a full session refetch unless necessary
+        setLoading(false);
+      }
+    );
+
     return () => subscription.unsubscribe();
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await logUserAction('logout');
-      await supabase.auth.signOut();
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Erro no logout:', error);
-    }
+    await logoutService();
+    setSession(null);
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        const profile = await getUserProfile(currentUser.id);
-        if (profile) {
-          setUser({ id: currentUser.id, email: currentUser.email, ...profile });
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao atualizar usuário:', error);
-    }
-  }, []);
-
-  const value = useMemo(() => ({
-    user,
-    isAuthenticated,
-    loading,
-    logout,
-    refreshUser,
-    profile: user,
-    setUser,
-    setIsAuthenticated
-  }), [user, isAuthenticated, loading, logout, refreshUser]);
+  // useMemo helps to prevent re-renders of consumers when the value object has not changed.
+  const value = useMemo(() => {
+    const isAuthenticated = !!session?.user;
+    
+    return {
+      // Raw session object
+      session,
+      // Granular, easy-to-access data
+      user: session?.user || null,
+      tenant: session?.tenant || null,
+      subscription: session?.subscription || null,
+      features: session?.subscription?.features || [],
+      // Status flags
+      isAuthenticated,
+      isAdmin: session?.user?.role === 'admin',
+      loading,
+      // Functions
+      logout,
+    };
+  }, [session, loading, logout]);
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

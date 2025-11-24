@@ -18,7 +18,7 @@ const Auth = () => {
   const [isPolicyModalOpen, setPolicyModalOpen] = useState(false);
 
   const navigate = useNavigate();
-  const { refreshUser, isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
@@ -36,27 +36,23 @@ const Auth = () => {
     setMessage(null);
 
     try {
+      let result;
       if (isSignUp) {
-        const result = await signup(name, email, password, companyName);
-        
-        if (result.user) {
-          setMessage('Conta criada com sucesso! Você já pode fazer login.');
-          setIsSignUp(false);
-          // Limpar campos
-          setName('');
-          setPassword('');
-          setCompanyName('');
-        } else {
-          setMessage('Conta criada! Verifique seu email para confirmar a conta.');
-        }
+        result = await signup(name, email, password, companyName);
       } else {
-        const result = await login(email, password);
-        if (result && result.user) {
-          // Aguardar um pouco para o AuthContext processar a mudança
-          setTimeout(() => {
-            navigate('/');
-          }, 100);
-        }
+        result = await login(email, password);
+      }
+
+      if (result && result.user) {
+        // A pequena espera garante que o AuthContext tenha tempo de ser atualizado
+        // antes do redirecionamento, evitando piscar a tela de login novamente.
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
+      } else {
+        // Este caso pode ocorrer se a função de signup não retornar um usuário
+        // ou se houver confirmação de e-mail habilitada (que não é o caso aqui).
+        setError('Não foi possível autenticar. Verifique os dados ou tente novamente.');
       }
     } catch (error) {
       console.error('Erro na autenticação:', error);

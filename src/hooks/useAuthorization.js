@@ -1,205 +1,108 @@
 import { useAuth } from '../contexts/AuthContext';
+import { useCallback } from 'react';
 
 /**
- * Hook customizado para controle de autorização baseado em perfis
- * @returns {Object} Funções e estados de autorização
+ * Hook customizado para controle de autorização baseado em plano de assinatura e role do usuário.
+ * Ele centraliza a lógica de verificação de permissões, facilitando a manutenção e
+ * garantindo que as regras de negócio sejam aplicadas de forma consistente na UI.
+ *
+ * @returns {Object} Funções e estados de autorização.
  */
 export const useAuthorization = () => {
-  const { user } = useAuth();
+  const { user, subscription, features, isAuthenticated } = useAuth();
 
   /**
-   * Verifica se o usuário tem permissão para uma determinada ação
-   * @param {string|Array} allowedRoles - Role(s) permitida(s) para a ação
-   * @returns {boolean} - true se autorizado, false caso contrário
+   * Verifica se o plano do usuário inclui uma feature específica.
+   * A verificação é case-insensitive.
+   *
+   * @param {string} featureName - O nome da feature a ser verificada (ex: 'NFE', 'AI_TOOLS').
+   * @returns {boolean} - `true` se a feature estiver incluída no plano, `false` caso contrário.
    */
-  const hasPermission = (allowedRoles) => {
-    if (!user || !user.user_role) return false;
+  const hasFeature = useCallback((featureName) => {
+    if (!subscription || !features) return false;
+    return features.some(f => f.toLowerCase() === featureName.toLowerCase());
+  }, [subscription, features]);
 
-    if (Array.isArray(allowedRoles)) {
-      return allowedRoles.includes(user.user_role);
+  /**
+   * Verifica se o usuário possui uma role específica.
+   * A verificação é case-insensitive.
+   *
+   * @param {string|Array<string>} roleName - A role ou uma lista de roles a serem verificadas.
+   * @returns {boolean} - `true` se o usuário possuir a role, `false` caso contrário.
+   */
+  const hasRole = useCallback((roleName) => {
+    if (!user?.role) return false;
+
+    const userRole = user.role.toLowerCase();
+    
+    if (Array.isArray(roleName)) {
+      return roleName.some(r => r.toLowerCase() === userRole);
     }
+    
+    return userRole === roleName.toLowerCase();
+  }, [user]);
 
-    return user.user_role === allowedRoles;
-  };
+  // Funções de conveniência que combinam verificações de role e feature.
+  
+  /**
+   * Verifica se o usuário é um administrador do tenant.
+   */
+  const isAdmin = useCallback(() => hasRole('admin'), [hasRole]);
 
   /**
-   * Verifica se o usuário é administrador
-   * @returns {boolean} - true se for admin
+   * Verifica se o usuário pode gerenciar outros usuários (convidar, remover, etc.).
+   * Apenas administradores podem fazer isso.
    */
-  const isAdmin = () => hasPermission('administrador');
+  const canManageUsers = useCallback(() => isAdmin(), [isAdmin]);
 
   /**
-   * Verifica se o usuário é operador
-   * @returns {boolean} - true se for operador
+   * Verifica se o usuário pode gerenciar as configurações da empresa/tenant.
+   * Apenas administradores podem fazer isso.
    */
-  const isOperador = () => hasPermission('operador');
+  const canManageCompany = useCallback(() => isAdmin(), [isAdmin]);
 
   /**
-   * Verifica se o usuário é auditor
-   * @returns {boolean} - true se for auditor
+   * Verifica se o usuário tem acesso a qualquer funcionalidade de NFS-e.
+   * Requer a feature 'NFSE'.
    */
-  const isAuditor = () => hasPermission('auditor');
+  const canAccessNFSe = useCallback(() => hasFeature('NFSE'), [hasFeature]);
 
   /**
-   * Verifica se o usuário pode acessar funcionalidades administrativas
-   * @returns {boolean} - true se tiver permissão administrativa
+   * Verifica se o usuário tem acesso a qualquer funcionalidade de NF-e.
+   * Requer a feature 'NFE'.
    */
-  const canManageUsers = () => isAdmin();
+  const canAccessNFe = useCallback(() => hasFeature('NFE'), [hasFeature]);
 
   /**
-   * Verifica se o usuário pode acessar funcionalidades de auditoria
-   * @returns {boolean} - true se for admin ou auditor
+   * Verifica se o usuário tem acesso a qualquer funcionalidade de NFC-e.
+   * Requer a feature 'NFCE'.
    */
-  const canAudit = () => {
-    const result = hasPermission(['administrador', 'auditor']);
-    return result;
-  };
+  const canAccessNFCe = useCallback(() => hasFeature('NFCE'), [hasFeature]);
 
   /**
-   * Verifica se o usuário pode emitir NFS-e
-   * @returns {boolean} - true se for admin ou operador
+   * Verifica se o usuário tem acesso às ferramentas de IA.
+   * Requer a feature 'AI_TOOLS'.
    */
-  const canEmitNFSe = () => {
-    const result = hasPermission(['administrador', 'operador']);
-    return result;
-  };
-
-  /**
-   * Verifica se o usuário pode gerenciar parâmetros do sistema
-   * @returns {boolean} - true se for admin
-   */
-  const canManageParameters = () => isAdmin();
-
-  /**
-   * Verifica se o usuário pode acessar controle de dívida ativa
-   * @returns {boolean} - true se for admin ou auditor
-   */
-  const canManageDebt = () => hasPermission(['administrador', 'auditor']);
-
-  /**
-   * Verifica se o usuário pode gerenciar clientes
-   * @returns {boolean} - true se for admin ou operador
-   */
-  const canManageClients = () => hasPermission(['administrador', 'operador']);
-
-  /**
-   * Retorna informações do perfil do usuário
-   * @returns {Object} - Informações detalhadas do perfil
-   */
-  const getUserProfile = () => {
-    if (!user) return null;
-
-    const profiles = {
-      administrador: {
-        name: 'Administrador',
-        description: 'Acesso total ao sistema',
-        color: 'red',
-        permissions: [
-          'Gerenciar usuários',
-          'Configurar parâmetros',
-          'Emitir NFS-e',
-          'Auditoria',
-          'Dívida ativa',
-          'Relatórios gerenciais'
-        ]
-      },
-      operador: {
-        name: 'Operador',
-        description: 'Operações do dia a dia',
-        color: 'blue',
-        permissions: [
-          'Emitir NFS-e',
-          'Gerenciar clientes',
-          'Serviços tomados',
-          'Declaração DES-IF'
-        ]
-      },
-      auditor: {
-        name: 'Auditor',
-        description: 'Auditoria e fiscalização',
-        color: 'orange',
-        permissions: [
-          'Auditoria fiscal',
-          'Simples Nacional',
-          'Autos de infração',
-          'Dívida ativa',
-          'Relatórios de auditoria'
-        ]
-      }
-    };
-
-    return {
-      ...profiles[user.user_role],
-      currentRole: user.user_role,
-      user: user
-    };
-  };
-
-  /**
-   * Lista todas as rotas disponíveis para o usuário atual
-   * @returns {Array} - Array de rotas permitidas
-   */
-  const getAvailableRoutes = () => {
-    const routes = {
-      common: [
-        { path: '/', name: 'Dashboard', module: 'NFS-e' },
-        { path: '/clientes', name: 'Clientes', module: 'Configurações' },
-        { path: '/empresa/configuracoes', name: 'Empresa', module: 'Configurações' },
-        { path: '/settings', name: 'Minha Conta', module: 'Configurações' }
-      ],
-      administrador: [
-        { path: '/admin/users', name: 'Usuários', module: 'Administração' },
-        { path: '/admin/parametros', name: 'Parâmetros', module: 'Administração' },
-        { path: '/nfse', name: 'Minhas NFS-e', module: 'NFS-e' },
-        { path: '/nfse/new', name: 'Nova NFS-e', module: 'NFS-e' },
-        { path: '/servicos-tomados', name: 'Lançamentos', module: 'Serviços Tomados' },
-        { path: '/des-if', name: 'Declaração', module: 'DES-IF' },
-        { path: '/auditoria/simples-nacional', name: 'Simples Nacional', module: 'Auditoria' },
-        { path: '/auditoria/autos-infracao', name: 'Autos de Infração', module: 'Auditoria' },
-        { path: '/divida-ativa', name: 'Controle', module: 'Dívida Ativa' }
-      ],
-      operador: [
-        { path: '/nfse', name: 'Minhas NFS-e', module: 'NFS-e' },
-        { path: '/nfse/new', name: 'Nova NFS-e', module: 'NFS-e' },
-        { path: '/servicos-tomados', name: 'Lançamentos', module: 'Serviços Tomados' },
-        { path: '/des-if', name: 'Declaração', module: 'DES-IF' }
-      ],
-      auditor: [
-        { path: '/auditoria/simples-nacional', name: 'Simples Nacional', module: 'Auditoria' },
-        { path: '/auditoria/autos-infracao', name: 'Autos de Infração', module: 'Auditoria' },
-        { path: '/divida-ativa', name: 'Controle', module: 'Dívida Ativa' }
-      ]
-    };
-
-    if (!user || !user.user_role) return routes.common;
-
-    return [
-      ...routes.common,
-      ...(routes[user.user_role] || [])
-    ];
-  };
+  const canAccessAITools = useCallback(() => hasFeature('AI_TOOLS'), [hasFeature]);
 
   return {
-    // Estados
+    // Dados brutos do contexto de autenticação
     user,
-    isAuthenticated: !!user,
+    subscription,
+    features,
+    isAuthenticated,
     
-    // Verificações gerais
-    hasPermission,
+    // Funções de verificação
+    hasFeature,
+    hasRole,
+    
+    // Verificações de conveniência
     isAdmin,
-    isOperador,
-    isAuditor,
-    
-    // Verificações específicas por funcionalidade
     canManageUsers,
-    canAudit,
-    canEmitNFSe,
-    canManageParameters,
-    canManageDebt,
-    canManageClients,
-    
-    // Informações do perfil
-    getUserProfile,
-    getAvailableRoutes
+    canManageCompany,
+    canAccessNFSe,
+    canAccessNFe,
+    canAccessNFCe,
+    canAccessAITools,
   };
 };
