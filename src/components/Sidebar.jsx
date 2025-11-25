@@ -17,7 +17,11 @@ import {
   ExpandMore,
   Receipt,
   Contactless,
-  AutoAwesome
+  AutoAwesome,
+  PointOfSale,
+  ShoppingCart,
+  AccountBalance,
+  Tune
 } from '@mui/icons-material';
 
 const Sidebar = () => {
@@ -31,11 +35,27 @@ const Sidebar = () => {
       'Geral': [
         { to: '/', text: 'Dashboard', icon: <Dashboard /> },
       ],
-      'NFS-e': [],
-      'NF-e': [],
-      'NFC-e': [],
-      'Ferramentas IA': [],
-      'Administração': [],
+      'NFS-e': [
+        { to: '/nfse', text: 'Minhas NFS-e', icon: <Description /> },
+        { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> },
+        { to: '/servicos-tomados', text: 'Serviços Tomados', icon: <Build /> },
+        { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> }],
+      'PDV': [
+        { to: 'https://pdv.fivetechsolutions.com.br', text: 'Acessar PDV', icon: <PointOfSale /> },
+        { to: '/pdv/vendas', text: 'Vendas', icon: <ShoppingCart /> },
+        { to: '/pdv/caixa', text: 'Caixa', icon: <AccountBalance /> },
+        { to: '/pdv/configuracao', text: 'Configuração', icon: <Tune /> }],
+      'NF-e': [
+        { to: '/nfe', text: 'Minhas NF-e', icon: <Receipt /> },
+        { to: '/nfe/new', text: 'Nova NF-e', icon: <AddCircle /> }],
+      'NFC-e': [
+        { to: '/nfce', text: 'Minhas NFC-e', icon: <Contactless /> },
+        { to: '/nfce/new', text: 'Nova NFC-e', icon: <AddCircle /> }],
+      'Ferramentas IA': [
+        { to: '/ai/insights', text: 'Análise Inteligente', icon: <AutoAwesome /> }],
+      'Administração': [
+        { to: '/admin/users', text: 'Usuários', icon: <People /> },
+        { to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> }],
       'Configurações': [
         { to: '/clientes', text: 'Clientes', icon: <People /> },
         { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
@@ -43,43 +63,14 @@ const Sidebar = () => {
       ],
     };
 
-    if (hasFeature('NFSE')) {
-      modules['NFS-e'].push(
-        { to: '/nfse', text: 'Minhas NFS-e', icon: <Description /> },
-        { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> },
-        { to: '/servicos-tomados', text: 'Serviços Tomados', icon: <Build /> },
-        { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> }
-      );
-    }
-    
-    if (hasFeature('NFE')) {
-      modules['NF-e'].push(
-        { to: '/nfe', text: 'Minhas NF-e', icon: <Receipt /> },
-        { to: '/nfe/new', text: 'Nova NF-e', icon: <AddCircle /> }
-      );
-    }
-    
-    if (hasFeature('NFCE')) {
-      modules['NFC-e'].push(
-        { to: '/nfce', text: 'Minhas NFC-e', icon: <Contactless /> },
-        { to: '/nfce/new', text: 'Nova NFC-e', icon: <AddCircle /> }
-      );
-    }
-    
-    if (hasFeature('AI_TOOLS')) {
-      modules['Ferramentas IA'].push(
-        { to: '/ai/insights', text: 'Análise Inteligente', icon: <AutoAwesome /> }
-      );
-    }
+    // Filtrar módulos baseados nas features
+    if (!hasFeature('NFSE')) delete modules['NFS-e'];
+    if (!hasFeature('NFE')) delete modules['NF-e'];
+    if (!hasFeature('NFCE')) delete modules['NFC-e'];
+    if (!hasFeature('AI_TOOLS')) delete modules['Ferramentas IA'];
+    if (!isAdmin()) delete modules['Administração'];
 
-    if (isAdmin()) {
-      modules['Administração'].push(
-        { to: '/admin/users', text: 'Usuários', icon: <People /> },
-        { to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> }
-      );
-    }
-
-    // Filtra módulos que não têm links
+    // Filtra módulos que não têm links (after potential deletions)
     return Object.fromEntries(
       Object.entries(modules).filter(([, links]) => links.length > 0)
     );
@@ -89,7 +80,8 @@ const Sidebar = () => {
 
   const getModuleForPath = useCallback((path) => {
     for (const [module, links] of Object.entries(navLinks)) {
-      if (links.some(link => path.startsWith(link.to))) {
+      // Ignorar links externos ao verificar o módulo ativo
+      if (links.some(link => !link.to.startsWith('http') && path.startsWith(link.to))) {
         return module;
       }
     }
@@ -97,10 +89,6 @@ const Sidebar = () => {
   }, [navLinks]);
 
   const [expandedSection, setExpandedSection] = useState(getModuleForPath(location.pathname));
-
-  useEffect(() => {
-    setExpandedSection(getModuleForPath(location.pathname));
-  }, [location.pathname, getModuleForPath]);
 
   const toggleSection = (sectionName) => {
     setExpandedSection(prev => (prev === sectionName ? null : sectionName));
@@ -114,10 +102,10 @@ const Sidebar = () => {
   const renderNavLinks = () => {
     return Object.entries(navLinks).map(([module, links]) => {
       const isOpen = expandedSection === module;
-      
+
       return (
         <div key={module} className="sidebar-module">
-          <div 
+          <div
             className="sidebar-module-header clickable"
             onClick={() => toggleSection(module)}
           >
@@ -127,12 +115,32 @@ const Sidebar = () => {
             </div>
           </div>
           <div className={`sidebar-module-links ${isOpen ? 'expanded' : 'collapsed'}`}>
-            {links.map((link) => (
-              <NavLink key={link.to} to={link.to} end={link.to === '/'} className="sidebar-link">
-                {link.icon}
-                <span>{link.text}</span>
-              </NavLink>
-            ))}
+            {links.map((link) => {
+              // Verificar se é link externo
+              const isExternal = link.to.startsWith('http');
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={link.to}
+                    href={link.to}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="sidebar-link"
+                  >
+                    {link.icon}
+                    <span>{link.text}</span>
+                  </a>
+                );
+              }
+
+              return (
+                <NavLink key={link.to} to={link.to} end={link.to === '/'} className="sidebar-link">
+                  {link.icon}
+                  <span>{link.text}</span>
+                </NavLink>
+              );
+            })}
           </div>
         </div>
       );
