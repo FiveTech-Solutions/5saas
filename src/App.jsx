@@ -26,6 +26,7 @@ import NFCeList from './pages/nfce/NFCeList';
 import NFCeForm from './pages/nfce/NFCeForm';
 import Insights from './pages/ai/Insights';
 import ProductList from './pages/ProductList';
+import ProductImport from './pages/ProductImport';
 import CategoryList from './pages/CategoryList';
 import CategoryForm from './pages/CategoryForm';
 

@@ -772,26 +772,48 @@ const NFeForm = () => {
                             />
                         </Grid>
                         <Grid item xs={12} md={4}>
-                            <TextField
-                                fullWidth
-                                label="CST PIS"
-                                value={currentItem.tributos.pis.cst}
-                                onChange={(e) => setCurrentItem({
-                                    ...currentItem,
-                                    tributos: { ...currentItem.tributos, pis: { ...currentItem.tributos.pis, cst: e.target.value } }
-                                })}
+                 // Optional taxes toggle
+                            <FormControlLabel
+                                control={<Switch checked={showTaxes} onChange={(e) => setShowTaxes(e.target.checked)} name="showTaxes" />}
+                                label="Adicionar Impostos"
                             />
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField
-                                fullWidth
-                                label="CST COFINS"
-                                value={currentItem.tributos.cofins.cst}
-                                onChange={(e) => setCurrentItem({
-                                    ...currentItem,
-                                    tributos: { ...currentItem.tributos, cofins: { ...currentItem.tributos.cofins, cst: e.target.value } }
-                                })}
-                            />
+                            {showTaxes && (
+                                <React.Fragment>
+                                    <Grid item xs={12} md={4}>
+                                        <TextField
+                                            label="CST ICMS"
+                                            fullWidth
+                                            value={currentItem.tributos.icms.cst}
+                                            onChange={(e) => setCurrentItem({
+                                                ...currentItem,
+                                                tributos: { ...currentItem.tributos, icms: { ...currentItem.tributos.icms, cst: e.target.value } }
+                                            })}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={4}>
+                                        <TextField
+                                            label="CST PIS"
+                                            fullWidth
+                                            value={currentItem.tributos.pis.cst}
+                                            onChange={(e) => setCurrentItem({
+                                                ...currentItem,
+                                                tributos: { ...currentItem.tributos, pis: { ...currentItem.tributos.pis, cst: e.target.value } }
+                                            })}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={4}>
+                                        <TextField
+                                            label="CST COFINS"
+                                            fullWidth
+                                            value={currentItem.tributos.cofins.cst}
+                                            onChange={(e) => setCurrentItem({
+                                                ...currentItem,
+                                                tributos: { ...currentItem.tributos, cofins: { ...currentItem.tributos.cofins, cst: e.target.value } }
+                                            })}
+                                        />
+                                    </Grid>
+                                </React.Fragment>
+                            ) />
                         </Grid>
                     </Grid>
                 </DialogContent>
