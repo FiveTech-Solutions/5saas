@@ -26,7 +26,8 @@ import NFCeList from './pages/nfce/NFCeList';
 import NFCeForm from './pages/nfce/NFCeForm';
 import Insights from './pages/ai/Insights';
 import ProductList from './pages/ProductList';
-import ProductForm from './pages/ProductForm';
+import CategoryList from './pages/CategoryList';
+import CategoryForm from './pages/CategoryForm';
 
 // A generic protected route that just checks for authentication.
 const ProtectedRoute = ({ children }) => {
@@ -123,7 +124,10 @@ function App() {
           <Route path="produtos" element={<ProductList />} />
           <Route path="produtos/novo" element={<ProductForm />} />
           <Route path="produtos/editar/:id" element={<ProductForm />} />
-
+          {/* Category Routes (admin only) */}
+          <Route path="categorias" element={<RoleProtectedRoute role="admin"><CategoryList /></RoleProtectedRoute>} />
+          <Route path="categorias/novo" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
+          <Route path="categorias/editar/:id" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
           {/* NFC-e Routes */}
           <Route path="nfce" element={<FeatureProtectedRoute feature="NFCE"><NFCeList /></FeatureProtectedRoute>} />
           <Route path="nfce/new" element={<FeatureProtectedRoute feature="NFCE"><NFCeForm /></FeatureProtectedRoute>} />
