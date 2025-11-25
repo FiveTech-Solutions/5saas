@@ -17,6 +17,14 @@ import AuditoriaAutosInfracao from './pages/AuditoriaAutosInfracao';
 import DividaAtiva from './pages/DividaAtiva';
 import MinhasNFSe from './pages/MinhasNFSe';
 import ServiceManagement from './pages/ServiceManagement';
+import Sales from './pages/pdv/Sales';
+import Cashier from './pages/pdv/Cashier';
+import PDVSettings from './pages/pdv/Settings';
+import NFeList from './pages/nfe/NFeList';
+import NFeForm from './pages/nfe/NFeForm';
+import NFCeList from './pages/nfce/NFCeList';
+import NFCeForm from './pages/nfce/NFCeForm';
+import Insights from './pages/ai/Insights';
 import './App.css';
 
 // A generic protected route that just checks for authentication.
@@ -76,7 +84,7 @@ function App() {
         <Route path="/auth" element={<Auth />} />
 
         {/* Protected routes using the MainLayout */}
-        <Route 
+        <Route
           path="/"
           element={
             <ProtectedRoute>
@@ -88,7 +96,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="settings" element={<Settings />} />
           <Route path="clientes" element={<Customers />} />
-          
+
           {/* NFS-e Routes (Basic Plan) */}
           <Route path="nfse" element={<FeatureProtectedRoute feature="NFSE"><MinhasNFSe /></FeatureProtectedRoute>} />
           <Route path="nfse/new" element={<FeatureProtectedRoute feature="NFSE"><NewNFSe /></FeatureProtectedRoute>} />
@@ -97,37 +105,54 @@ function App() {
           <Route path="des-if" element={<FeatureProtectedRoute feature="NFSE"><Desif /></FeatureProtectedRoute>} />
 
           {/* NF-e / NFC-e Routes (Standard Plan) */}
-          <Route 
-            path="servicos/*" 
-            element={<FeatureProtectedRoute feature="NFE"><ServiceManagement /></FeatureProtectedRoute>} 
+          <Route
+            path="servicos/*"
+            element={<FeatureProtectedRoute feature="NFE"><ServiceManagement /></FeatureProtectedRoute>}
           />
 
+          {/* PDV Routes */}
+          <Route path="pdv/vendas" element={<Sales />} />
+          <Route path="pdv/caixa" element={<Cashier />} />
+          <Route path="pdv/configuracao" element={<PDVSettings />} />
+
+          {/* NF-e Routes */}
+          <Route path="nfe" element={<FeatureProtectedRoute feature="NFE"><NFeList /></FeatureProtectedRoute>} />
+          <Route path="nfe/new" element={<FeatureProtectedRoute feature="NFE"><NFeForm /></FeatureProtectedRoute>} />
+
+          {/* NFC-e Routes */}
+          <Route path="nfce" element={<FeatureProtectedRoute feature="NFCE"><NFCeList /></FeatureProtectedRoute>} />
+          <Route path="nfce/new" element={<FeatureProtectedRoute feature="NFCE"><NFCeForm /></FeatureProtectedRoute>} />
+
           {/* Admin Routes (Role-based) */}
-          <Route 
+          <Route
             path="admin/users"
             element={<RoleProtectedRoute role="admin"><UserManagement /></RoleProtectedRoute>}
           />
-          <Route 
+          <Route
             path="admin/parametros"
             element={<RoleProtectedRoute role="admin"><AdminParametros /></RoleProtectedRoute>}
           />
-          <Route 
+          <Route
             path="empresa/configuracoes"
             element={<RoleProtectedRoute role="admin"><CompanySettings /></RoleProtectedRoute>}
           />
 
           {/* AI / Premium Routes (Feature-based) */}
-          <Route 
+          <Route
             path="auditoria/simples-nacional"
             element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaSimplesNacional /></FeatureProtectedRoute>}
           />
-          <Route 
+          <Route
             path="auditoria/autos-infracao"
             element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaAutosInfracao /></FeatureProtectedRoute>}
           />
-          <Route 
+          <Route
             path="divida-ativa"
             element={<FeatureProtectedRoute feature="AI_TOOLS"><DividaAtiva /></FeatureProtectedRoute>}
+          />
+          <Route
+            path="ai/insights"
+            element={<FeatureProtectedRoute feature="AI_TOOLS"><Insights /></FeatureProtectedRoute>}
           />
         </Route>
 
