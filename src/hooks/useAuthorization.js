@@ -25,7 +25,8 @@ export const useAuthorization = () => {
 
   /**
    * Verifica se o usuário possui uma role específica.
-   * A verificação é case-insensitive.
+   * A verificação é case-insensitive e aceita tanto o formato em inglês quanto em português.
+   * Mapeamento: 'admin' = 'administrador', 'member' = 'operador'/'auditor'
    *
    * @param {string|Array<string>} roleName - A role ou uma lista de roles a serem verificadas.
    * @returns {boolean} - `true` se o usuário possuir a role, `false` caso contrário.
@@ -34,16 +35,36 @@ export const useAuthorization = () => {
     if (!user?.role) return false;
 
     const userRole = user.role.toLowerCase();
-    
+
+    // Mapeamento de roles em inglês para português
+    const roleMap = {
+      'admin': 'administrador',
+      'administrador': 'administrador',
+      'member': 'operador', // member pode ser operador ou auditor
+      'operador': 'operador',
+      'auditor': 'auditor'
+    };
+
+    // Normaliza a role do usuário
+    const normalizedUserRole = roleMap[userRole] || userRole;
+
     if (Array.isArray(roleName)) {
-      return roleName.some(r => r.toLowerCase() === userRole);
+      return roleName.some(r => {
+        const normalizedRole = roleMap[r.toLowerCase()] || r.toLowerCase();
+        // Admin/Administrador tem acesso a tudo
+        if (normalizedUserRole === 'administrador') return true;
+        return normalizedRole === normalizedUserRole;
+      });
     }
-    
-    return userRole === roleName.toLowerCase();
+
+    const normalizedRole = roleMap[roleName.toLowerCase()] || roleName.toLowerCase();
+    // Admin/Administrador tem acesso a tudo
+    if (normalizedUserRole === 'administrador') return true;
+    return normalizedRole === normalizedUserRole;
   }, [user]);
 
   // Funções de conveniência que combinam verificações de role e feature.
-  
+
   /**
    * Verifica se o usuário é um administrador do tenant.
    */
@@ -91,11 +112,11 @@ export const useAuthorization = () => {
     subscription,
     features,
     isAuthenticated,
-    
+
     // Funções de verificação
     hasFeature,
     hasRole,
-    
+
     // Verificações de conveniência
     isAdmin,
     canManageUsers,
