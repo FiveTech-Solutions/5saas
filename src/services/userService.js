@@ -61,7 +61,7 @@ export const getUserSessionData = async (userId) => {
         features: activeSubscription.plan.features || [], // Ensure features is always an array
       } : null,
     };
-    
+
     return sessionData;
 
   } catch (error) {
@@ -164,17 +164,104 @@ export const getUserProfile = async (userId) => {
  * This depends on RLS being enabled and configured correctly.
  */
 export const listUsersInTenant = async () => {
-    try {
-        const { data, error } = await supabase
-            .from('users')
-            .select('id, full_name, email, role'); // Specify fields to avoid over-fetching
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, full_name, email, role, created_at'); // Specify fields to avoid over-fetching
 
-        if (error) {
-            console.error('Error listing users:', error);
-            throw error;
-        }
-        return data;
-    } catch (error) {
-        throw new Error('Failed to list users.');
+    if (error) {
+      console.error('Error listing users:', error);
+      throw error;
     }
+    return data;
+  } catch (error) {
+    throw new Error('Failed to list users.');
+  }
+};
+
+/**
+ * Alias for listUsersInTenant - used by UserManagement component
+ */
+export const getUsers = listUsersInTenant;
+
+/**
+ * Invites a new user to the tenant by creating them in the auth system
+ * and associating them with the current tenant.
+ * 
+ * @param {string} email - The email of the user to invite
+ * @param {string} role - The role to assign to the user ('admin', 'operador', 'auditor')
+ * @returns {Promise<Object>} The created user data
+ */
+export const inviteUser = async (email, role = 'operador') => {
+  try {
+    // Note: In a real implementation, this would typically:
+    // 1. Call a Supabase Edge Function to create the user in auth.users
+    // 2. Create the user profile in user_profiles
+    // 3. Associate the user with the current tenant in public.users
+    // 4. Send an invitation email
+
+    // For now, we'll use the signup function as a placeholder
+    // In production, you'd want a separate invite flow
+    const { data, error } = await supabase.functions.invoke('invite-user', {
+      body: { email, role }
+    });
+
+    if (error) {
+      console.error('Error inviting user:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in inviteUser:', error);
+    throw new Error('Failed to invite user. Please ensure the Edge Function is deployed.');
+  }
+};
+
+/**
+ * Updates the role of a user in the system.
+ * 
+ * @param {string} userId - The ID of the user to update
+ * @param {string} newRole - The new role to assign ('admin', 'operador', 'auditor')
+ * @returns {Promise<Object>} The updated user data
+ */
+export const updateUserRole = async (userId, newRole) => {
+  try {
+    // Update in public.users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .update({ role: newRole === 'administrador' ? 'admin' : 'member' })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (userError) {
+      console.error('Error updating user role:', userError);
+      throw userError;
+    }
+
+    // Also update in user_profiles if it exists
+    const roleMap = {
+      'admin': 'administrador',
+      'administrador': 'administrador',
+      'operador': 'operador',
+      'auditor': 'auditor',
+      'member': 'operador'
+    };
+
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .update({ user_role: roleMap[newRole] || 'operador' })
+      .eq('id', userId);
+
+    if (profileError) {
+      console.warn('Error updating user profile role:', profileError);
+      // Don't throw here, as the main update succeeded
+    }
+
+    return userData;
+  } catch (error) {
+    console.error('Error in updateUserRole:', error);
+    throw new Error('Failed to update user role.');
+  }
 };
