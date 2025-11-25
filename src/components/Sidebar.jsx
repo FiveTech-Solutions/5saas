@@ -53,9 +53,10 @@ const Sidebar = () => {
         { to: '/nfce/new', text: 'Nova NFC-e', icon: <AddCircle /> }],
       'Ferramentas IA': [
         { to: '/ai/insights', text: 'Análise Inteligente', icon: <AutoAwesome /> }],
-      'Administração': [
-        { to: '/admin/users', text: 'Usuários', icon: <People /> },
-        { to: '/admin/parametros', text: 'Parâmetros', icon: <AdminPanelSettings /> }],
+      'Produtos': [
+        { to: '/produtos', text: 'Listar Produtos', icon: <ListAlt /> },
+        { to: '/produtos/novo', text: 'Cadastrar Produto', icon: <AddCircle /> }
+      ],
       'Configurações': [
         { to: '/clientes', text: 'Clientes', icon: <People /> },
         { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
