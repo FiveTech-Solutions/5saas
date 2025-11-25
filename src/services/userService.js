@@ -39,9 +39,21 @@ export const getUserSessionData = async (userId) => {
 
     if (!user) return null;
 
-    // The query for subscriptions returns an array, so we find the active one.
-    // In our schema, a tenant has only one subscription, so we can simplify this.
-    const activeSubscription = user.tenant.subscription.find(sub => sub.status === 'active' || sub.status === 'trialing');
+    // Handle subscription - it can be either an array or a single object
+    let activeSubscription = null;
+
+    if (user.tenant?.subscription) {
+      if (Array.isArray(user.tenant.subscription)) {
+        // If it's an array, find the active one
+        activeSubscription = user.tenant.subscription.find(sub => sub.status === 'active' || sub.status === 'trialing');
+      } else {
+        // If it's a single object, use it directly if it's active
+        const sub = user.tenant.subscription;
+        if (sub.status === 'active' || sub.status === 'trialing') {
+          activeSubscription = sub;
+        }
+      }
+    }
 
     // Structure the data for easy use in the AuthContext.
     const sessionData = {
