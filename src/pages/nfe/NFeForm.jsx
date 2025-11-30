@@ -5,6 +5,7 @@ import { emitirNFe } from '../../services/nfeTechnospeedService';
 import { createNFe } from '../../services/nfeService';
 import { getProducts } from '../../services/productService';
 import { getCustomers } from '../../services/customerService';
+import logger from '../../utils/logger';
 import {
     TextField,
     Button,
@@ -31,7 +32,8 @@ import {
     DialogActions,
     CircularProgress,
     Alert,
-    Snackbar
+    Snackbar,
+    Switch, FormControlLabel,
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon, Edit as EditIcon } from '@mui/icons-material';
 import './NFeForm.css';
@@ -80,6 +82,7 @@ const NFeForm = () => {
 
     // Modal State for Products
     const [openProductModal, setOpenProductModal] = useState(false);
+    const [showTaxes, setShowTaxes] = useState(false);
     const [currentItem, setCurrentItem] = useState({
         produtoId: '',
         codigo: '',
@@ -112,7 +115,7 @@ const NFeForm = () => {
             // const customers = await getCustomers();
             // setCustomersList(customers || []);
         } catch (err) {
-            console.error('Error loading initial data:', err);
+            logger.error('Error loading initial data:', err);
             setError('Erro ao carregar dados iniciais.');
         }
     };
@@ -311,9 +314,8 @@ const NFeForm = () => {
                 }
             }];
 
-            console.log('Sending payload:', JSON.stringify(payload, null, 2));
+            logger.debug('Sending NF-e payload:', payload);
 
-            // 2. Send to Technospeed
             const response = await emitirNFe(payload);
 
             // 3. Save to Supabase (Internal Record)
@@ -328,7 +330,7 @@ const NFeForm = () => {
             }, 3000);
 
         } catch (err) {
-            console.error('Error emitting NF-e:', err);
+            logger.error('Error emitting NF-e:', err);
             setError(err.message || 'Erro ao emitir NF-e');
         } finally {
             setLoading(false);
@@ -772,48 +774,26 @@ const NFeForm = () => {
                             />
                         </Grid>
                         <Grid item xs={12} md={4}>
-                 // Optional taxes toggle
-                            <FormControlLabel
-                                control={<Switch checked={showTaxes} onChange={(e) => setShowTaxes(e.target.checked)} name="showTaxes" />}
-                                label="Adicionar Impostos"
+                            <TextField
+                                fullWidth
+                                label="CST PIS"
+                                value={currentItem.tributos.pis.cst}
+                                onChange={(e) => setCurrentItem({
+                                    ...currentItem,
+                                    tributos: { ...currentItem.tributos, pis: { ...currentItem.tributos.pis, cst: e.target.value } }
+                                })}
                             />
-                            {showTaxes && (
-                                <React.Fragment>
-                                    <Grid item xs={12} md={4}>
-                                        <TextField
-                                            label="CST ICMS"
-                                            fullWidth
-                                            value={currentItem.tributos.icms.cst}
-                                            onChange={(e) => setCurrentItem({
-                                                ...currentItem,
-                                                tributos: { ...currentItem.tributos, icms: { ...currentItem.tributos.icms, cst: e.target.value } }
-                                            })}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12} md={4}>
-                                        <TextField
-                                            label="CST PIS"
-                                            fullWidth
-                                            value={currentItem.tributos.pis.cst}
-                                            onChange={(e) => setCurrentItem({
-                                                ...currentItem,
-                                                tributos: { ...currentItem.tributos, pis: { ...currentItem.tributos.pis, cst: e.target.value } }
-                                            })}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12} md={4}>
-                                        <TextField
-                                            label="CST COFINS"
-                                            fullWidth
-                                            value={currentItem.tributos.cofins.cst}
-                                            onChange={(e) => setCurrentItem({
-                                                ...currentItem,
-                                                tributos: { ...currentItem.tributos, cofins: { ...currentItem.tributos.cofins, cst: e.target.value } }
-                                            })}
-                                        />
-                                    </Grid>
-                                </React.Fragment>
-                            ) />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <TextField
+                                fullWidth
+                                label="CST COFINS"
+                                value={currentItem.tributos.cofins.cst}
+                                onChange={(e) => setCurrentItem({
+                                    ...currentItem,
+                                    tributos: { ...currentItem.tributos, cofins: { ...currentItem.tributos.cofins, cst: e.target.value } }
+                                })}
+                            />
                         </Grid>
                     </Grid>
                 </DialogContent>

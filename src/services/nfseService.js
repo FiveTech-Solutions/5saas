@@ -1,4 +1,5 @@
 import api from './api';
+import logger from '../utils/logger';
 
 /**
  * NFS-e Service - Integration with Technospeed API
@@ -92,7 +93,7 @@ export const consultarNotasPorPeriodo = async (params) => {
     const response = await api.get('/nfse/consultar/periodo', { params });
     return response.data;
   } catch (error) {
-    console.error('Erro ao consultar notas por período:', error);
+    logger.error('Erro ao consultar notas por período:', error);
     throw error.response?.data || error.message;
   }
 };
@@ -116,7 +117,7 @@ export const baixarPdfNota = async (idNota) => {
 
     return { success: true };
   } catch (error) {
-    console.error('Erro ao baixar PDF:', error);
+    logger.error('Erro ao baixar PDF:', error);
     throw error.response?.data || error.message;
   }
 };
@@ -140,7 +141,7 @@ export const baixarXmlNota = async (idNota) => {
 
     return { success: true };
   } catch (error) {
-    console.error('Erro ao baixar XML:', error);
+    logger.error('Erro ao baixar XML:', error);
     throw error.response?.data || error.message;
   }
 };
@@ -154,7 +155,7 @@ export const enviarNotaPorEmail = async (idNota, destinatarios, reenvio = true) 
     });
     return response.data;
   } catch (error) {
-    console.error('Erro ao enviar nota por email:', error);
+    logger.error('Erro ao enviar nota por email:', error);
     throw error.response?.data || error.message;
   }
 };
@@ -168,7 +169,7 @@ export const cancelarNota = async (idNota, codigo = '9', motivo = 'Cancelamento 
     });
     return response.data;
   } catch (error) {
-    console.error('Erro ao cancelar nota:', error);
+    logger.error('Erro ao cancelar nota:', error);
     throw error.response?.data || error.message;
   }
 };

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import logger from '../utils/logger';
 
 export const getAddressFromCEP = async (cep) => {
   if (!cep || cep.replace(/\D/g, '').length !== 8) {
@@ -12,7 +13,7 @@ export const getAddressFromCEP = async (cep) => {
     }
     return response.data;
   } catch (error) {
-    console.error('Error fetching address from ViaCEP:', error);
+    logger.error('Error fetching address from ViaCEP:', error);
     return null;
   }
 };

@@ -6,8 +6,9 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { getServicoPlugNotas } from '../services/plugnotasService'; // Assuming this can fetch a single service
-import './ServiceList.css'; // Assuming you'll create a CSS file for this
+import { getServicoPlugNotas } from '../services/plugnotasService';
+import logger from '../utils/logger';
+import './ServiceList.css';
 
 const ServiceList = () => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const ServiceList = () => {
         ];
         setServices(placeholderServices);
       } catch (err) {
-        console.error("Erro ao carregar serviços:", err);
+        logger.error('Error loading services:', err);
         setError('Falha ao carregar a lista de serviços.');
       } finally {
         setLoading(false);
@@ -68,17 +69,12 @@ const ServiceList = () => {
   };
 
   const handleEdit = (serviceId) => {
-    // Implement edit logic, e.g., navigate to a service edit form
-    console.log('Edit service:', serviceId);
-    // navigate(`/servicos/editar/${serviceId}`);
+    logger.debug('Edit service:', serviceId);
   };
 
   const handleDelete = (serviceId) => {
-    // Implement delete logic
-    console.log('Delete service:', serviceId);
+    logger.debug('Delete service:', serviceId);
     if (window.confirm(`Tem certeza que deseja excluir o serviço com ID ${serviceId}?`)) {
-      // Call API to delete service
-      // After successful deletion, update the services list
       setServices(prev => prev.filter(s => s.idIntegracao !== serviceId));
     }
   };

@@ -1,34 +1,45 @@
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import MainLayout from './layouts/MainLayout';
-import Home from './pages/Home';
-import NewNFSe from './pages/NewNFSe';
-import NFSeDetails from './pages/NFSeDetails';
-import Settings from './pages/Settings';
-import Auth from './pages/Auth';
-import CompanySettings from './pages/CompanySettings';
-import UserManagement from './pages/UserManagement';
-import Customers from './pages/Customers';
-import ServicosTomados from './pages/ServicosTomados';
-import Desif from './pages/Desif';
-import AdminParametros from './pages/AdminParametros';
-import AuditoriaSimplesNacional from './pages/AuditoriaSimplesNacional';
-import AuditoriaAutosInfracao from './pages/AuditoriaAutosInfracao';
-import DividaAtiva from './pages/DividaAtiva';
-import MinhasNFSe from './pages/MinhasNFSe';
-import ServiceManagement from './pages/ServiceManagement';
-import Sales from './pages/pdv/Sales';
-import Cashier from './pages/pdv/Cashier';
-import PDVSettings from './pages/pdv/Settings';
-import NFeList from './pages/nfe/NFeList';
-import NFeForm from './pages/nfe/NFeForm';
-import NFCeList from './pages/nfce/NFCeList';
-import NFCeForm from './pages/nfce/NFCeForm';
-import Insights from './pages/ai/Insights';
-import ProductList from './pages/ProductList';
-import ProductImport from './pages/ProductImport';
-import CategoryList from './pages/CategoryList';
-import CategoryForm from './pages/CategoryForm';
+import { CircularProgress, Box } from '@mui/material';
+
+// Lazy load pages
+const Home = lazy(() => import('./pages/Home'));
+const NewNFSe = lazy(() => import('./pages/NewNFSe'));
+const NFSeDetails = lazy(() => import('./pages/NFSeDetails'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Auth = lazy(() => import('./pages/Auth'));
+const CompanySettings = lazy(() => import('./pages/CompanySettings'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const Customers = lazy(() => import('./pages/Customers'));
+const ServicosTomados = lazy(() => import('./pages/ServicosTomados'));
+const Desif = lazy(() => import('./pages/Desif'));
+const AdminParametros = lazy(() => import('./pages/AdminParametros'));
+const AuditoriaSimplesNacional = lazy(() => import('./pages/AuditoriaSimplesNacional'));
+const AuditoriaAutosInfracao = lazy(() => import('./pages/AuditoriaAutosInfracao'));
+const DividaAtiva = lazy(() => import('./pages/DividaAtiva'));
+const MinhasNFSe = lazy(() => import('./pages/MinhasNFSe'));
+const ServiceManagement = lazy(() => import('./pages/ServiceManagement'));
+const Sales = lazy(() => import('./pages/pdv/Sales'));
+const Cashier = lazy(() => import('./pages/pdv/Cashier'));
+const PDVSettings = lazy(() => import('./pages/pdv/Settings'));
+const NFeList = lazy(() => import('./pages/nfe/NFeList'));
+const NFeForm = lazy(() => import('./pages/nfe/NFeForm'));
+const NFCeList = lazy(() => import('./pages/nfce/NFCeList'));
+const NFCeForm = lazy(() => import('./pages/nfce/NFCeForm'));
+const Insights = lazy(() => import('./pages/ai/Insights'));
+const ProductList = lazy(() => import('./pages/ProductList'));
+const ProductForm = lazy(() => import('./pages/ProductForm'));
+const ProductImport = lazy(() => import('./pages/ProductImport'));
+const CategoryList = lazy(() => import('./pages/CategoryList'));
+const CategoryForm = lazy(() => import('./pages/CategoryForm'));
+
+const LoadingFallback = () => (
+  <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+    <CircularProgress />
+  </Box>
+);
 
 // A generic protected route that just checks for authentication.
 const ProtectedRoute = ({ children }) => {
@@ -82,93 +93,96 @@ function App() {
 
   return (
     <Router>
-      <Routes>
-        {/* Public authentication route */}
-        <Route path="/auth" element={<Auth />} />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public authentication route */}
+          <Route path="/auth" element={<Auth />} />
 
-        {/* Protected routes using the MainLayout */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
-          {/* Routes available to all authenticated users */}
-          <Route index element={<Home />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="clientes" element={<Customers />} />
+          {/* Protected routes using the MainLayout */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            {/* Routes available to all authenticated users */}
+            <Route index element={<Home />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="clientes" element={<Customers />} />
 
-          {/* NFS-e Routes (Basic Plan) */}
-          <Route path="nfse" element={<FeatureProtectedRoute feature="NFSE"><MinhasNFSe /></FeatureProtectedRoute>} />
-          <Route path="nfse/new" element={<FeatureProtectedRoute feature="NFSE"><NewNFSe /></FeatureProtectedRoute>} />
-          <Route path="nfse/:id" element={<FeatureProtectedRoute feature="NFSE"><NFSeDetails /></FeatureProtectedRoute>} />
-          <Route path="servicos-tomados" element={<FeatureProtectedRoute feature="NFSE"><ServicosTomados /></FeatureProtectedRoute>} />
-          <Route path="des-if" element={<FeatureProtectedRoute feature="NFSE"><Desif /></FeatureProtectedRoute>} />
+            {/* NFS-e Routes (Basic Plan) */}
+            <Route path="nfse" element={<FeatureProtectedRoute feature="NFSE"><MinhasNFSe /></FeatureProtectedRoute>} />
+            <Route path="nfse/new" element={<FeatureProtectedRoute feature="NFSE"><NewNFSe /></FeatureProtectedRoute>} />
+            <Route path="nfse/:id" element={<FeatureProtectedRoute feature="NFSE"><NFSeDetails /></FeatureProtectedRoute>} />
+            <Route path="servicos-tomados" element={<FeatureProtectedRoute feature="NFSE"><ServicosTomados /></FeatureProtectedRoute>} />
+            <Route path="des-if" element={<FeatureProtectedRoute feature="NFSE"><Desif /></FeatureProtectedRoute>} />
 
-          {/* NF-e / NFC-e Routes (Standard Plan) */}
-          <Route
-            path="servicos/*"
-            element={<FeatureProtectedRoute feature="NFE"><ServiceManagement /></FeatureProtectedRoute>}
-          />
+            {/* NF-e / NFC-e Routes (Standard Plan) */}
+            <Route
+              path="servicos/*"
+              element={<FeatureProtectedRoute feature="NFE"><ServiceManagement /></FeatureProtectedRoute>}
+            />
 
-          {/* PDV Routes */}
-          <Route path="pdv/vendas" element={<Sales />} />
-          <Route path="pdv/caixa" element={<Cashier />} />
-          <Route path="pdv/configuracao" element={<PDVSettings />} />
+            {/* PDV Routes */}
+            <Route path="pdv/vendas" element={<Sales />} />
+            <Route path="pdv/caixa" element={<Cashier />} />
+            <Route path="pdv/configuracao" element={<PDVSettings />} />
 
-          {/* NF-e Routes */}
-          <Route path="nfe" element={<FeatureProtectedRoute feature="NFE"><NFeList /></FeatureProtectedRoute>} />
-          <Route path="nfe/new" element={<FeatureProtectedRoute feature="NFE"><NFeForm /></FeatureProtectedRoute>} />
-          {/* Product Routes */}
-          <Route path="produtos" element={<ProductList />} />
-          <Route path="produtos/novo" element={<ProductForm />} />
-          <Route path="produtos/editar/:id" element={<ProductForm />} />
-          {/* Category Routes (admin only) */}
-          <Route path="categorias" element={<RoleProtectedRoute role="admin"><CategoryList /></RoleProtectedRoute>} />
-          <Route path="categorias/novo" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
-          <Route path="categorias/editar/:id" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
-          {/* NFC-e Routes */}
-          <Route path="nfce" element={<FeatureProtectedRoute feature="NFCE"><NFCeList /></FeatureProtectedRoute>} />
-          <Route path="nfce/new" element={<FeatureProtectedRoute feature="NFCE"><NFCeForm /></FeatureProtectedRoute>} />
+            {/* NF-e Routes */}
+            <Route path="nfe" element={<FeatureProtectedRoute feature="NFE"><NFeList /></FeatureProtectedRoute>} />
+            <Route path="nfe/new" element={<FeatureProtectedRoute feature="NFE"><NFeForm /></FeatureProtectedRoute>} />
+            {/* Product Routes */}
+            <Route path="produtos" element={<ProductList />} />
+            <Route path="produtos/novo" element={<ProductForm />} />
+            <Route path="produtos/editar/:id" element={<ProductForm />} />
+            <Route path="produtos/importar" element={<ProductImport />} />
+            {/* Category Routes (admin only) */}
+            <Route path="categorias" element={<RoleProtectedRoute role="admin"><CategoryList /></RoleProtectedRoute>} />
+            <Route path="categorias/novo" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
+            <Route path="categorias/editar/:id" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
+            {/* NFC-e Routes */}
+            <Route path="nfce" element={<FeatureProtectedRoute feature="NFCE"><NFCeList /></FeatureProtectedRoute>} />
+            <Route path="nfce/new" element={<FeatureProtectedRoute feature="NFCE"><NFCeForm /></FeatureProtectedRoute>} />
 
-          {/* Admin Routes (Role-based) */}
-          <Route
-            path="admin/users"
-            element={<RoleProtectedRoute role="admin"><UserManagement /></RoleProtectedRoute>}
-          />
-          <Route
-            path="admin/parametros"
-            element={<RoleProtectedRoute role="admin"><AdminParametros /></RoleProtectedRoute>}
-          />
-          <Route
-            path="empresa/configuracoes"
-            element={<RoleProtectedRoute role="admin"><CompanySettings /></RoleProtectedRoute>}
-          />
+            {/* Admin Routes (Role-based) */}
+            <Route
+              path="admin/users"
+              element={<RoleProtectedRoute role="admin"><UserManagement /></RoleProtectedRoute>}
+            />
+            <Route
+              path="admin/parametros"
+              element={<RoleProtectedRoute role="admin"><AdminParametros /></RoleProtectedRoute>}
+            />
+            <Route
+              path="empresa/configuracoes"
+              element={<RoleProtectedRoute role="admin"><CompanySettings /></RoleProtectedRoute>}
+            />
 
-          {/* AI / Premium Routes (Feature-based) */}
-          <Route
-            path="auditoria/simples-nacional"
-            element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaSimplesNacional /></FeatureProtectedRoute>}
-          />
-          <Route
-            path="auditoria/autos-infracao"
-            element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaAutosInfracao /></FeatureProtectedRoute>}
-          />
-          <Route
-            path="divida-ativa"
-            element={<FeatureProtectedRoute feature="AI_TOOLS"><DividaAtiva /></FeatureProtectedRoute>}
-          />
-          <Route
-            path="ai/insights"
-            element={<FeatureProtectedRoute feature="AI_TOOLS"><Insights /></FeatureProtectedRoute>}
-          />
-        </Route>
+            {/* AI / Premium Routes (Feature-based) */}
+            <Route
+              path="auditoria/simples-nacional"
+              element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaSimplesNacional /></FeatureProtectedRoute>}
+            />
+            <Route
+              path="auditoria/autos-infracao"
+              element={<FeatureProtectedRoute feature="AI_TOOLS"><AuditoriaAutosInfracao /></FeatureProtectedRoute>}
+            />
+            <Route
+              path="divida-ativa"
+              element={<FeatureProtectedRoute feature="AI_TOOLS"><DividaAtiva /></FeatureProtectedRoute>}
+            />
+            <Route
+              path="ai/insights"
+              element={<FeatureProtectedRoute feature="AI_TOOLS"><Insights /></FeatureProtectedRoute>}
+            />
+          </Route>
 
-        {/* Fallback redirect */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+          {/* Fallback redirect */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

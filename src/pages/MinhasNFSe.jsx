@@ -8,9 +8,10 @@ import {
   enviarNotaPorEmail,
   cancelarNota
 } from '../services/nfseService';
-import { getNFSeDetails } from '../services/plugnotasService'; // Import getNFSeDetails
+import { getNFSeDetails } from '../services/plugnotasService';
 import { useAuth } from '../contexts/AuthContext';
-import NFSeDetailsModal from '../components/NFSeDetailsModal'; // Import NFSeDetailsModal
+import NFSeDetailsModal from '../components/NFSeDetailsModal';
+import logger from '../utils/logger';
 import './MinhasNFSe.css';
 import {
   Search,
@@ -106,8 +107,6 @@ const MinhasNFSe = () => {
       setEmailModal({ aberto: false, nota: null });
       setEmailDestinos('');
       setError('');
-      // Mostrar sucesso (você pode adicionar um toast aqui)
-      console.log('Email enviado com sucesso!');
     } catch (error) {
       setError('Erro ao enviar email: ' + error.message);
     } finally {
@@ -123,9 +122,7 @@ const MinhasNFSe = () => {
       setMotivoCancelamento('Cancelamento a pedido do Prestador');
       setCodigoCancelamento('9');
       setError('');
-      // Atualizar a lista de notas
       buscarNotas();
-      console.log('Nota cancelada com sucesso!');
     } catch (error) {
       setError('Erro ao cancelar nota: ' + error.message);
     } finally {
@@ -143,7 +140,7 @@ const MinhasNFSe = () => {
       setIsDetailsModalOpen(true);
     } catch (err) {
       setError('Erro ao carregar detalhes da NFS-e: ' + err.message);
-      console.error('Erro ao buscar detalhes da NFSe:', err);
+      logger.error('Error fetching NFSe details:', err);
     } finally {
       setLoadingDetails(false);
     }
@@ -189,7 +186,7 @@ const MinhasNFSe = () => {
       });
     } catch (err) {
       setError('Erro ao buscar notas: ' + err.message);
-      console.error('Erro na busca:', err);
+      logger.error('Error fetching notes:', err);
     } finally {
       setLoading(false);
     }

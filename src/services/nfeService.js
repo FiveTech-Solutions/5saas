@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { handleServiceError } from '../utils/errorHandler';
 
 /**
  * Service para gerenciamento de NF-e no banco de dados
@@ -47,8 +48,7 @@ export const getNFes = async (filters = {}) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching NFes:', error);
-        throw new Error('Erro ao buscar NF-e');
+        handleServiceError(error, 'getNFes', 'Erro ao buscar NF-e');
     }
 };
 
@@ -73,8 +73,7 @@ export const getNFe = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching NFe:', error);
-        throw new Error('Erro ao buscar NF-e');
+        handleServiceError(error, 'getNFe', 'Erro ao buscar NF-e');
     }
 };
 
@@ -92,8 +91,7 @@ export const getNFeByChaveAcesso = async (chaveAcesso) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching NFe by chave:', error);
-        return null;
+        handleServiceError(error, 'getNFeByChaveAcesso', 'Erro ao buscar NF-e por chave');
     }
 };
 
@@ -209,8 +207,7 @@ export const createNFe = async (nfeData) => {
 
         return nfe;
     } catch (error) {
-        console.error('Error creating NFe:', error);
-        throw new Error(error.message || 'Erro ao criar NF-e');
+        handleServiceError(error, 'createNFe', 'Erro ao criar NF-e');
     }
 };
 
@@ -234,8 +231,7 @@ export const updateNFeStatus = async (id, status, additionalData = {}) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error updating NFe status:', error);
-        throw new Error('Erro ao atualizar status da NF-e');
+        handleServiceError(error, 'updateNFeStatus', 'Erro ao atualizar status da NF-e');
     }
 };
 
@@ -273,8 +269,7 @@ export const cancelNFe = async (id, justificativa) => {
 
         return nfe;
     } catch (error) {
-        console.error('Error canceling NFe:', error);
-        throw new Error('Erro ao cancelar NF-e');
+        handleServiceError(error, 'cancelNFe', 'Erro ao cancelar NF-e');
     }
 };
 
@@ -314,8 +309,7 @@ export const createCartaCorrecao = async (nfeId, correcao) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error creating carta de correção:', error);
-        throw new Error('Erro ao criar carta de correção');
+        handleServiceError(error, 'createCartaCorrecao', 'Erro ao criar carta de correção');
     }
 };
 
@@ -333,8 +327,7 @@ export const getNFeEvents = async (nfeId) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching NFe events:', error);
-        throw new Error('Erro ao buscar eventos da NF-e');
+        handleServiceError(error, 'getNFeEvents', 'Erro ao buscar eventos da NF-e');
     }
 };
 
@@ -377,7 +370,6 @@ export const getNFeStats = async (filters = {}) => {
 
         return stats;
     } catch (error) {
-        console.error('Error fetching NFe stats:', error);
-        throw new Error('Erro ao buscar estatísticas de NF-e');
+        handleServiceError(error, 'getNFeStats', 'Erro ao buscar estatísticas de NF-e');
     }
 };

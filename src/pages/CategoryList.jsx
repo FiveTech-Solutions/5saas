@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { getCategories, deleteCategory } from '../services/categoryService';
 import { Delete, Edit, Add } from '@mui/icons-material';
@@ -14,7 +15,7 @@ const CategoryList = () => {
             const data = await getCategories();
             setCategories(data);
         } catch (e) {
-            console.error('Error loading categories', e);
+            logger.error('Error loading categories', e);
             alert('Erro ao carregar categorias');
         } finally {
             setLoading(false);
@@ -32,7 +33,7 @@ const CategoryList = () => {
             alert('Categoria excluída');
             loadCategories();
         } catch (e) {
-            console.error('Error deleting', e);
+            logger.error('Error deleting', e);
             alert('Erro ao excluir categoria');
         }
     };

@@ -1,0 +1,17 @@
+.category-form-container {
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.category-form-container h2 {
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.category-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

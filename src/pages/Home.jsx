@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { Line, Doughnut } from 'react-chartjs-2';
 import { format, subDays } from 'date-fns';
@@ -151,7 +152,7 @@ const Home = () => {
       });
 
     } catch (err) {
-      console.error('Erro ao carregar NFS-e:', err);
+      logger.error('Erro ao carregar NFS-e:', err);
       setError('Erro ao carregar suas NFS-e.');
       setNfseList([]);
     } finally {

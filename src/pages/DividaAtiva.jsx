@@ -6,6 +6,7 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
+import logger from '../utils/logger';
 import './DividaAtiva.css';
 
 const initialDebts = [
@@ -63,13 +64,11 @@ const DividaAtiva = () => {
   };
 
   const handleViewDetails = (id) => {
-    console.log('Ver detalhes da dívida:', id);
-    // Implement logic to show debt details, e.g., open a modal or navigate
+    logger.debug('View debt details:', id);
   };
 
   const handleUpdateStatus = (id) => {
-    console.log('Atualizar status da dívida:', id);
-    // Implement logic to update debt status, e.g., open a modal with status options
+    logger.debug('Update debt status:', id);
   };
 
   if (loading) {

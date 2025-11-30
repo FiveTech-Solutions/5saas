@@ -21,7 +21,9 @@ import {
   PointOfSale,
   ShoppingCart,
   AccountBalance,
-  Tune
+  Tune,
+  Inventory,
+  Category
 } from '@mui/icons-material';
 
 const Sidebar = () => {
@@ -32,36 +34,73 @@ const Sidebar = () => {
 
   const getNavLinks = useCallback(() => {
     const modules = {
-      'Geral': [
-        { to: '/', text: 'Dashboard', icon: <Dashboard /> },
-      ],
-      'NFS-e': [
-        { to: '/nfse', text: 'Minhas NFS-e', icon: <Description /> },
-        { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> },
-        { to: '/servicos-tomados', text: 'Serviços Tomados', icon: <Build /> },
-        { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> }],
-      'PDV': [
-        { to: 'https://pdv.fivetechsolutions.com.br', text: 'Acessar PDV', icon: <PointOfSale /> },
-        { to: '/pdv/vendas', text: 'Vendas', icon: <ShoppingCart /> },
-        { to: '/pdv/caixa', text: 'Caixa', icon: <AccountBalance /> },
-        { to: '/pdv/configuracao', text: 'Configuração', icon: <Tune /> }],
-      'NF-e': [
-        { to: '/nfe', text: 'Minhas NF-e', icon: <Receipt /> },
-        { to: '/nfe/new', text: 'Nova NF-e', icon: <AddCircle /> }],
-      'NFC-e': [
-        { to: '/nfce', text: 'Minhas NFC-e', icon: <Contactless /> },
-        { to: '/nfce/new', text: 'Nova NFC-e', icon: <AddCircle /> }],
-      'Ferramentas IA': [
-        { to: '/ai/insights', text: 'Análise Inteligente', icon: <AutoAwesome /> }],
-      'Categorias': [
-        { to: '/categorias', text: 'Listar Categorias', icon: <ListAlt /> },
-        { to: '/categorias/novo', text: 'Cadastrar Categoria', icon: <AddCircle /> }
-      ],
-      'Configurações': [
-        { to: '/clientes', text: 'Clientes', icon: <People /> },
-        { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
-        { to: '/settings', text: 'Minha Conta', icon: <Settings /> },
-      ],
+      'Geral': {
+        icon: <Dashboard />,
+        links: [
+          { to: '/', text: 'Dashboard', icon: <Dashboard /> },
+        ]
+      },
+      'Produtos': {
+        icon: <Inventory />,
+        links: [
+          { to: '/produtos', text: 'Listar Produtos', icon: <ListAlt /> },
+          { to: '/produtos/novo', text: 'Cadastrar Produto', icon: <AddCircle /> },
+          { to: '/produtos/importar', text: 'Importar de XML', icon: <Description /> },
+        ]
+      },
+      'NFS-e': {
+        icon: <Description />,
+        links: [
+          { to: '/nfse', text: 'Minhas NFS-e', icon: <Description /> },
+          { to: '/nfse/new', text: 'Nova NFS-e', icon: <AddCircle /> },
+          { to: '/servicos-tomados', text: 'Serviços Tomados', icon: <Build /> },
+          { to: '/servicos', text: 'Gerenciar Serviços', icon: <ListAlt /> }
+        ]
+      },
+      'PDV': {
+        icon: <PointOfSale />,
+        links: [
+          { to: 'https://pdv.fivetechsolutions.com.br', text: 'Acessar PDV', icon: <PointOfSale /> },
+          { to: '/pdv/vendas', text: 'Vendas', icon: <ShoppingCart /> },
+          { to: '/pdv/caixa', text: 'Caixa', icon: <AccountBalance /> },
+          { to: '/pdv/configuracao', text: 'Configuração', icon: <Tune /> }
+        ]
+      },
+      'NF-e': {
+        icon: <Receipt />,
+        links: [
+          { to: '/nfe', text: 'Minhas NF-e', icon: <Receipt /> },
+          { to: '/nfe/new', text: 'Nova NF-e', icon: <AddCircle /> }
+        ]
+      },
+      'NFC-e': {
+        icon: <Contactless />,
+        links: [
+          { to: '/nfce', text: 'Minhas NFC-e', icon: <Contactless /> },
+          { to: '/nfce/new', text: 'Nova NFC-e', icon: <AddCircle /> }
+        ]
+      },
+      'Ferramentas IA': {
+        icon: <AutoAwesome />,
+        links: [
+          { to: '/ai/insights', text: 'Análise Inteligente', icon: <AutoAwesome /> }
+        ]
+      },
+      'Categorias': {
+        icon: <Category />,
+        links: [
+          { to: '/categorias', text: 'Listar Categorias', icon: <ListAlt /> },
+          { to: '/categorias/novo', text: 'Cadastrar Categoria', icon: <AddCircle /> }
+        ]
+      },
+      'Configurações': {
+        icon: <Settings />,
+        links: [
+          { to: '/clientes', text: 'Clientes', icon: <People /> },
+          { to: '/empresa/configuracoes', text: 'Empresa', icon: <Business /> },
+          { to: '/settings', text: 'Minha Conta', icon: <Settings /> },
+        ]
+      },
     };
 
     // Filtrar módulos baseados nas features
@@ -73,16 +112,16 @@ const Sidebar = () => {
 
     // Filtra módulos que não têm links (after potential deletions)
     return Object.fromEntries(
-      Object.entries(modules).filter(([, links]) => links.length > 0)
+      Object.entries(modules).filter(([, module]) => module.links.length > 0)
     );
   }, [hasFeature, isAdmin]);
 
   const navLinks = getNavLinks();
 
   const getModuleForPath = useCallback((path) => {
-    for (const [module, links] of Object.entries(navLinks)) {
+    for (const [module, moduleData] of Object.entries(navLinks)) {
       // Ignorar links externos ao verificar o módulo ativo
-      if (links.some(link => !link.to.startsWith('http') && path.startsWith(link.to))) {
+      if (moduleData.links.some(link => !link.to.startsWith('http') && path.startsWith(link.to))) {
         return module;
       }
     }
@@ -101,7 +140,7 @@ const Sidebar = () => {
   };
 
   const renderNavLinks = () => {
-    return Object.entries(navLinks).map(([module, links]) => {
+    return Object.entries(navLinks).map(([module, moduleData]) => {
       const isOpen = expandedSection === module;
 
       return (
@@ -110,13 +149,16 @@ const Sidebar = () => {
             className="sidebar-module-header clickable"
             onClick={() => toggleSection(module)}
           >
-            <h3 className="sidebar-module-title">{module}</h3>
+            <div className="sidebar-module-title-wrapper">
+              {moduleData.icon}
+              <h3 className="sidebar-module-title">{module}</h3>
+            </div>
             <div className="sidebar-toggle-icon">
               {isOpen ? <ExpandLess /> : <ExpandMore />}
             </div>
           </div>
           <div className={`sidebar-module-links ${isOpen ? 'expanded' : 'collapsed'}`}>
-            {links.map((link) => {
+            {moduleData.links.map((link) => {
               // Verificar se é link externo
               const isExternal = link.to.startsWith('http');
 

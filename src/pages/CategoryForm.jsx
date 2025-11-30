@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TextField, Button, Switch, FormControlLabel } from '@mui/material';
 import { Add, ArrowBack } from '@mui/icons-material';
@@ -32,7 +33,7 @@ const CategoryForm = () => {
                         active: data.active ?? true,
                     });
                 } catch (e) {
-                    console.error('Erro ao buscar categoria', e);
+                    logger.error('Erro ao buscar categoria', e);
                     alert('Não foi possível carregar a categoria.');
                 }
             };
@@ -68,7 +69,7 @@ const CategoryForm = () => {
             }
             navigate('/categorias');
         } catch (error) {
-            console.error('Erro ao salvar categoria', error);
+            logger.error('Erro ao salvar categoria', error);
             alert('Falha ao salvar categoria. Verifique o console.');
         } finally {
             setLoading(false);

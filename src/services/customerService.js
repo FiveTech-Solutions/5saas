@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { handleServiceError } from '../utils/errorHandler';
 
 /**
  * Service for handling Customer data in Supabase.
@@ -16,8 +17,7 @@ export const getCustomers = async () => {
     .order('razao_social', { ascending: true });
 
   if (error) {
-    console.error('Error fetching customers:', error);
-    throw error;
+    handleServiceError(error, 'getCustomers', 'Erro ao buscar clientes.');
   }
 
   return data;
@@ -44,12 +44,11 @@ export const createCustomer = async (customerData) => {
     .single();
 
   if (error) {
-    console.error('Error creating customer:', error);
     // Handle unique constraint violation
     if (error.code === '23505') {
       throw new Error('Já existe um cliente com este CPF/CNPJ.');
     }
-    throw error;
+    handleServiceError(error, 'createCustomer', 'Erro ao criar cliente.');
   }
 
   return data;
@@ -70,8 +69,7 @@ export const updateCustomer = async (customerId, updates) => {
     .single();
 
   if (error) {
-    console.error('Error updating customer:', error);
-    throw error;
+    handleServiceError(error, 'updateCustomer', 'Erro ao atualizar cliente.');
   }
 
   return data;
@@ -89,7 +87,6 @@ export const deleteCustomer = async (customerId) => {
     .eq('id', customerId);
 
   if (error) {
-    console.error('Error deleting customer:', error);
-    throw error;
+    handleServiceError(error, 'deleteCustomer', 'Erro ao excluir cliente.');
   }
 };

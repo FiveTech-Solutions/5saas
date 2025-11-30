@@ -3,13 +3,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import { createNFSe as createNFSeExternal } from '../services/nfseService';
 import { createNfse as createNfseSupabase } from '../services/nfseSupabaseService';
 import { getCustomers } from '../services/customerService';
-import { getCompanyDetailsByCnpj, registerTomadorPlugNotas, getTomadorPlugNotas, registerServicoPlugNotas, getServicoPlugNotas } from '../services/plugnotasService'; // Import new functions
+import { getCompanyDetailsByCnpj, registerTomadorPlugNotas, getTomadorPlugNotas, registerServicoPlugNotas, getServicoPlugNotas } from '../services/plugnotasService';
 import { getAddressFromCEP } from '../services/viaCepService';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppState } from '../contexts/StateContext'; // Import useAppState
+import { useAppState } from '../contexts/StateContext';
 import CustomerSelector from '../components/CustomerSelector';
 import AddCustomerModal from '../components/AddCustomerModal';
-import { useIMask } from 'react-imask'; // Import useIMask
+import { useIMask } from 'react-imask';
+import logger from '../utils/logger';
+import { nfseSchema } from '../schemas/nfseSchema';
 import './NewNFSe.css';
 
 const generateIdIntegracao = () => `ID-${Date.now()}`;
@@ -23,6 +25,7 @@ const NewNFSe = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const [success, setSuccess] = useState(null); // New state for success messages
   const [pageLoading, setPageLoading] = useState(true); // For initial data load
 
@@ -31,7 +34,7 @@ const NewNFSe = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(pageState.selectedCustomer || null);
   const [isTomadorRegistered, setIsTomadorRegistered] = useState(false);
   const [isServicoRegistered, setIsServicoRegistered] = useState(false); // New state for service registration
-    
+
   const [formData, setFormData] = useState(pageState.formData || {
     idIntegracao: generateIdIntegracao(),
     prestador: { cpfCnpj: '' }, // Initially empty
@@ -118,7 +121,7 @@ const NewNFSe = () => {
         setError('Tomador não encontrado na PlugNotas. Por favor, preencha os dados para registro.');
       }
     } catch (err) {
-      console.error("Erro ao consultar tomador na PlugNotas:", err);
+      logger.error('Error fetching tomador from PlugNotas:', err);
       setError(err.message || 'Erro ao consultar tomador na PlugNotas.');
       setIsTomadorRegistered(false);
     } finally {
@@ -162,7 +165,7 @@ const NewNFSe = () => {
         setError('Serviço não encontrado na PlugNotas. Por favor, preencha os dados para registro.');
       }
     } catch (err) {
-      console.error("Erro ao consultar serviço na PlugNotas:", err);
+      logger.error('Error fetching service from PlugNotas:', err);
       setError(err.message || 'Erro ao consultar serviço na PlugNotas.');
       setIsServicoRegistered(false);
     } finally {
@@ -179,7 +182,7 @@ const NewNFSe = () => {
   useEffect(() => {
     // Only update if formData or selectedCustomer have actually changed content
     if (JSON.stringify(formData) !== JSON.stringify(prevFormDataRef.current) ||
-        JSON.stringify(selectedCustomer) !== JSON.stringify(prevSelectedCustomerRef.current)) {
+      JSON.stringify(selectedCustomer) !== JSON.stringify(prevSelectedCustomerRef.current)) {
       setPageData('newNFSe', { formData, selectedCustomer });
       prevFormDataRef.current = formData;
       prevSelectedCustomerRef.current = selectedCustomer;
@@ -191,20 +194,17 @@ const NewNFSe = () => {
     const loadInitialData = async () => {
       try {
         setPageLoading(true);
-        // Fetch customers and PlugNotas company data in parallel
         const [customerList, plugnotasCompanyData] = await Promise.all([
           getCustomers(),
-          getCompanyDetailsByCnpj('08187168000160') // Hardcoded CNPJ for homologation
+          getCompanyDetailsByCnpj('08187168000160')
         ]);
-
-        console.log('PlugNotas Company Data:', plugnotasCompanyData); // Debugging line
 
         if (!plugnotasCompanyData || !plugnotasCompanyData.cpf_cnpj) {
           setError('Não foi possível carregar os dados do prestador da PlugNotas.');
           setPageLoading(false);
           return;
         }
-        
+
         setCustomers(customerList);
 
         // Pre-fill prestador data from PlugNotas API
@@ -234,7 +234,7 @@ const NewNFSe = () => {
         }));
 
       } catch (err) {
-        console.error("Failed to load initial data", err);
+        logger.error('Failed to load initial data:', err);
         setError('Falha ao carregar dados. Tente novamente.');
       } finally {
         setPageLoading(false);
@@ -280,6 +280,15 @@ const NewNFSe = () => {
       ref[keys[keys.length - 1]] = value;
       return current;
     });
+
+    // Clear specific error when field changes
+    if (formErrors[path]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[path];
+        return newErrors;
+      });
+    }
   };
 
   const handleCepBlur = async (cep) => {
@@ -308,25 +317,37 @@ const NewNFSe = () => {
     setLoading(true);
     setError(null);
 
-    console.log('Dados do Tomador no submit:', formData.tomador);
-
-    // Client-side validation
     const tomador = formData.tomador;
     const servico = formData.servico[0];
 
-    if (!tomador.cpfCnpj || !tomador.razaoSocial || !tomador.email ||
-        !tomador.endereco.cep || !tomador.endereco.logradouro || !tomador.endereco.numero ||
-        !tomador.endereco.bairro || !tomador.endereco.descricaoCidade || !tomador.endereco.estado ||
-        !tomador.endereco.codigoCidade) { // Added validation for codigoCidade
-      setError('Por favor, preencha todos os campos obrigatórios do Tomador, incluindo os detalhes de endereço.');
-      setLoading(false);
-      return;
-    }
+    // Zod Validation
+    try {
+      // Prepare data for validation ensuring numbers are numbers
+      const dataToValidate = {
+        ...formData,
+        servico: formData.servico.map(s => ({
+          ...s,
+          valor: {
+            ...s.valor,
+            servico: parseFloat(s.valor.servico) || 0
+          }
+        }))
+      };
 
-    if (!servico.discriminacao || isNaN(servicoValor) || servicoValor <= 0) {
-      setError('Por favor, preencha a discriminação do serviço e o valor do serviço (deve ser um número maior que zero).');
-      setLoading(false);
-      return;
+      nfseSchema.parse(dataToValidate);
+      setFormErrors({});
+    } catch (err) {
+      if (err.errors) {
+        const newErrors = {};
+        err.errors.forEach(error => {
+          const path = error.path.join('.');
+          newErrors[path] = error.message;
+        });
+        setFormErrors(newErrors);
+        setError('Por favor, corrija os erros no formulário.');
+        setLoading(false);
+        return;
+      }
     }
 
     if (!isServicoRegistered && !servico.idIntegracaoServico) {
@@ -427,7 +448,7 @@ const NewNFSe = () => {
   if (pageLoading) {
     return <div className="loading-state">Carregando configurações...</div>;
   }
-  
+
   const isTomadorLocked = !!selectedCustomer;
 
   return (
@@ -472,174 +493,179 @@ const NewNFSe = () => {
               </div>
             </div>
             <div className="form-row">
-                <div className="form-group">
-                  <label>Inscrição Estadual</label>
-                  <input type="text" value={formData.prestador.inscricaoEstadual} readOnly className="readonly-input" />
-                </div>
-                <div className="form-group">
-                  <label>Email</label>
-                  <input type="email" value={formData.prestador.email} readOnly className="readonly-input" />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Telefone</label>
-                  <input type="text" value={formData.prestador.telefone} readOnly className="readonly-input" />
-                </div>
-                <div className="form-group">
-                  <label>CEP</label>
-                  <input type="text" value={formData.prestador.endereco.cep} readOnly className="readonly-input" />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Logradouro</label>
-                  <input type="text" value={formData.prestador.endereco.logradouro} readOnly className="readonly-input" />
-                </div>
-                <div className="form-group">
-                  <label>Número</label>
-                  <input type="text" value={formData.prestador.endereco.numero} readOnly className="readonly-input" />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Bairro</label>
-                  <input type="text" value={formData.prestador.endereco.bairro} readOnly className="readonly-input" />
-                </div>
-                <div className="form-group">
-                  <label>Cidade</label>
-                  <input type="text" value={formData.prestador.endereco.descricaoCidade} readOnly className="readonly-input" />
-                </div>
-                <div className="form-group">
-                  <label>Estado</label>
-                  <input type="text" value={formData.prestador.endereco.estado} readOnly className="readonly-input" />
-                </div>
-              </div>
-            </section>
-            
-            <section className="form-section">
-              <h3>Dados do Tomador</h3>
-              <CustomerSelector
-                customers={customers}
-                onSelectCustomer={handleSelectCustomer}
-                onAddNewCustomer={() => setCustomerModalOpen(true)}
-              />
-              {selectedCustomer && (
-                <div className="chip">
-                  Cliente selecionado: {selectedCustomer.razao_social}
-                  <button type="button" onClick={() => setSelectedCustomer(null)}>Limpar</button>
-                </div>
-              )}
-              <div className="form-row">
-                <div className="form-group">
-                  <label>CPF/CNPJ *</label>
-                  <input
-                    type="text"
-                    ref={tomadorCpfCnpjInputRef}
-                    value={formData.tomador.cpfCnpj}
-                    onBlur={handleTomadorCpfCnpjBlur} // Call the new handler
-                    onChange={() => handleInputChange('tomador.cpfCnpj', tomadorCpfCnpjMaskRef.current.unmaskedValue)}
-                    required
-                    readOnly={isTomadorLocked || isTomadorRegistered} // Read-only if locked by customer selection or registered
-                    className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Razão Social/Nome *</label>
-                  <input type="text" value={formData.tomador.razaoSocial} onChange={(e) => handleInputChange('tomador.razaoSocial', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Email *</label>
-                  <input type="email" value={formData.tomador.email} onChange={(e) => handleInputChange('tomador.email', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>CEP *</label>
-                  <input type="text" value={formData.tomador.endereco.cep} onBlur={(e) => handleCepBlur(e.target.value)} onChange={(e) => handleInputChange('tomador.endereco.cep', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Logradouro *</label>
-                  <input type="text" value={formData.tomador.endereco.logradouro} onChange={(e) => handleInputChange('tomador.endereco.logradouro', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-                <div className="form-group">
-                  <label>Número *</label>
-                  <input type="text" value={formData.tomador.endereco.numero} onChange={(e) => handleInputChange('tomador.endereco.numero', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Bairro *</label>
-                  <input type="text" value={formData.tomador.endereco.bairro} onChange={(e) => handleInputChange('tomador.endereco.bairro', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-                <div className="form-group">
-                  <label>Cidade *</label>
-                  <input type="text" value={formData.tomador.endereco.descricaoCidade} onChange={(e) => handleInputChange('tomador.endereco.descricaoCidade', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-                <div className="form-group">
-                  <label>Estado *</label>
-                  <input type="text" value={formData.tomador.endereco.estado} onChange={(e) => handleInputChange('tomador.endereco.estado', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
-                </div>
-              </div>
-            </section>
-            
-            <section className="form-section">
-              <h3>Dados do Serviço</h3>
               <div className="form-group">
-                <label>ID de Integração do Serviço</label>
+                <label>Inscrição Estadual</label>
+                <input type="text" value={formData.prestador.inscricaoEstadual} readOnly className="readonly-input" />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input type="email" value={formData.prestador.email} readOnly className="readonly-input" />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Telefone</label>
+                <input type="text" value={formData.prestador.telefone} readOnly className="readonly-input" />
+              </div>
+              <div className="form-group">
+                <label>CEP</label>
+                <input type="text" value={formData.prestador.endereco.cep} readOnly className="readonly-input" />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Logradouro</label>
+                <input type="text" value={formData.prestador.endereco.logradouro} readOnly className="readonly-input" />
+              </div>
+              <div className="form-group">
+                <label>Número</label>
+                <input type="text" value={formData.prestador.endereco.numero} readOnly className="readonly-input" />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Bairro</label>
+                <input type="text" value={formData.prestador.endereco.bairro} readOnly className="readonly-input" />
+              </div>
+              <div className="form-group">
+                <label>Cidade</label>
+                <input type="text" value={formData.prestador.endereco.descricaoCidade} readOnly className="readonly-input" />
+              </div>
+              <div className="form-group">
+                <label>Estado</label>
+                <input type="text" value={formData.prestador.endereco.estado} readOnly className="readonly-input" />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <h3>Dados do Tomador</h3>
+            <CustomerSelector
+              customers={customers}
+              onSelectCustomer={handleSelectCustomer}
+              onAddNewCustomer={() => setCustomerModalOpen(true)}
+            />
+            {selectedCustomer && (
+              <div className="chip">
+                Cliente selecionado: {selectedCustomer.razao_social}
+                <button type="button" onClick={() => setSelectedCustomer(null)}>Limpar</button>
+              </div>
+            )}
+            <div className="form-row">
+              <div className="form-group">
+                <label>CPF/CNPJ *</label>
                 <input
                   type="text"
-                  value={formData.servico[0].idIntegracaoServico}
-                  onChange={(e) => handleInputChange('servico.0.idIntegracaoServico', e.target.value)}
-                  onBlur={handleServicoIdIntegracaoBlur}
-                  readOnly={isServicoRegistered}
-                  className={isServicoRegistered ? 'readonly-input' : ''}
+                  ref={tomadorCpfCnpjInputRef}
+                  value={formData.tomador.cpfCnpj}
+                  onBlur={handleTomadorCpfCnpjBlur} // Call the new handler
+                  onChange={() => handleInputChange('tomador.cpfCnpj', tomadorCpfCnpjMaskRef.current.unmaskedValue)}
+                  required
+                  readOnly={isTomadorLocked || isTomadorRegistered} // Read-only if locked by customer selection or registered
+                  className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : (formErrors['tomador.cpfCnpj'] ? 'input-error' : '')}
                 />
+                {formErrors['tomador.cpfCnpj'] && <span className="error-text">{formErrors['tomador.cpfCnpj']}</span>}
               </div>
               <div className="form-group">
-                <label>Discriminação do Serviço *</label>
-                <textarea
-                  value={formData.servico[0].discriminacao}
-                  onChange={(e) => handleInputChange('servico.0.discriminacao', e.target.value)}
-                  rows="4"
+                <label>Razão Social/Nome *</label>
+                <input type="text" value={formData.tomador.razaoSocial} onChange={(e) => handleInputChange('tomador.razaoSocial', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : (formErrors['tomador.razaoSocial'] ? 'input-error' : '')} />
+                {formErrors['tomador.razaoSocial'] && <span className="error-text">{formErrors['tomador.razaoSocial']}</span>}
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Email *</label>
+                <input type="email" value={formData.tomador.email} onChange={(e) => handleInputChange('tomador.email', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : (formErrors['tomador.email'] ? 'input-error' : '')} />
+                {formErrors['tomador.email'] && <span className="error-text">{formErrors['tomador.email']}</span>}
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>CEP *</label>
+                <input type="text" value={formData.tomador.endereco.cep} onBlur={(e) => handleCepBlur(e.target.value)} onChange={(e) => handleInputChange('tomador.endereco.cep', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Logradouro *</label>
+                <input type="text" value={formData.tomador.endereco.logradouro} onChange={(e) => handleInputChange('tomador.endereco.logradouro', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
+              </div>
+              <div className="form-group">
+                <label>Número *</label>
+                <input type="text" value={formData.tomador.endereco.numero} onChange={(e) => handleInputChange('tomador.endereco.numero', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Bairro *</label>
+                <input type="text" value={formData.tomador.endereco.bairro} onChange={(e) => handleInputChange('tomador.endereco.bairro', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
+              </div>
+              <div className="form-group">
+                <label>Cidade *</label>
+                <input type="text" value={formData.tomador.endereco.descricaoCidade} onChange={(e) => handleInputChange('tomador.endereco.descricaoCidade', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
+              </div>
+              <div className="form-group">
+                <label>Estado *</label>
+                <input type="text" value={formData.tomador.endereco.estado} onChange={(e) => handleInputChange('tomador.endereco.estado', e.target.value)} required readOnly={isTomadorLocked || isTomadorRegistered} className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : ''} />
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section">
+            <h3>Dados do Serviço</h3>
+            <div className="form-group">
+              <label>ID de Integração do Serviço</label>
+              <input
+                type="text"
+                value={formData.servico[0].idIntegracaoServico}
+                onChange={(e) => handleInputChange('servico.0.idIntegracaoServico', e.target.value)}
+                onBlur={handleServicoIdIntegracaoBlur}
+                readOnly={isServicoRegistered}
+                className={isServicoRegistered ? 'readonly-input' : ''}
+              />
+            </div>
+            <div className="form-group">
+              <label>Discriminação do Serviço *</label>
+              <textarea
+                value={formData.servico[0].discriminacao}
+                onChange={(e) => handleInputChange('servico.0.discriminacao', e.target.value)}
+                rows="4"
+                required
+                readOnly={isServicoRegistered}
+                className={isServicoRegistered ? 'readonly-input' : (formErrors['servico.0.discriminacao'] ? 'input-error' : '')}
+              />
+              {formErrors['servico.0.discriminacao'] && <span className="error-text">{formErrors['servico.0.discriminacao']}</span>}
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Valor do Serviço (R$) *</label>
+                <input
+                  type="text"
+                  ref={servicoValorInputRef}
+                  value={formData.servico[0].valor.servico}
+                  onChange={() => {
+                    const unmasked = servicoValorMaskRef.current.unmaskedValue;
+                    const value = unmasked === '' ? 0 : parseFloat(unmasked);
+                    handleInputChange('servico.0.valor.servico', value);
+                  }}
                   required
                   readOnly={isServicoRegistered}
-                  className={isServicoRegistered ? 'readonly-input' : ''}
+                  className={isServicoRegistered ? 'readonly-input' : (formErrors['servico.0.valor.servico'] ? 'input-error' : '')}
                 />
+                {formErrors['servico.0.valor.servico'] && <span className="error-text">{formErrors['servico.0.valor.servico']}</span>}
               </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Valor do Serviço (R$) *</label>
-                  <input
-                    type="text"
-                    ref={servicoValorInputRef}
-                    value={formData.servico[0].valor.servico}
-                    onChange={() => {
-                      const unmasked = servicoValorMaskRef.current.unmaskedValue;
-                      const value = unmasked === '' ? 0 : parseFloat(unmasked);
-                      handleInputChange('servico.0.valor.servico', value);
-                    }}
-                    required
-                    readOnly={isServicoRegistered}
-                    className={isServicoRegistered ? 'readonly-input' : ''}
-                  />
-                </div>
-              </div>
-            </section>
-  
-            <div className="form-actions">
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Enviando...' : 'Criar NFS-e'}
-              </button>
             </div>
-          </form>
-        </div>
-      </>
-    );
-  };
-  
-  export default NewNFSe;
+          </section>
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Enviando...' : 'Criar NFS-e'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+};
+
+export default NewNFSe;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { registerServicoPlugNotas } from '../services/plugnotasService';
 import './ServiceForm.css'; // Assuming you'll create a CSS file for this
@@ -148,7 +149,7 @@ const ServiceForm = () => {
         },
       });
     } catch (err) {
-      console.error("Erro ao cadastrar serviço:", err);
+      logger.error("Erro ao cadastrar serviço:", err);
       setError(err.message || 'Erro ao cadastrar serviço.');
     } finally {
       setLoading(false);

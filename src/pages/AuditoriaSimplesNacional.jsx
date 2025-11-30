@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DescriptionIcon from '@mui/icons-material/Description';
+import logger from '../utils/logger';
 import './AuditoriaSimplesNacional.css';
 
 const companies = [
@@ -54,9 +55,8 @@ const AuditoriaSimplesNacional = () => {
     }
 
     try {
-      // Simulate API call for audit
-      console.log('Iniciando auditoria Simples Nacional:', auditParams);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
+      logger.debug('Starting Simples Nacional audit:', auditParams);
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const selectedCompany = companies.find(c => c.id === auditParams.companyId);
       const resultStatus = Math.random() > 0.5 ? 'Conforme' : 'Com Discrepâncias';
@@ -78,7 +78,7 @@ const AuditoriaSimplesNacional = () => {
       setAuditHistory(prev => [...prev, { id: `AUD${prev.length + 1}`, ...newAuditResult }]);
       setSuccess('Auditoria concluída com sucesso!');
     } catch (err) {
-      console.error("Erro ao iniciar auditoria:", err);
+      logger.error('Error starting audit:', err);
       setError(err.message || 'Erro ao iniciar auditoria.');
     } finally {
       setLoading(false);
@@ -95,8 +95,7 @@ const AuditoriaSimplesNacional = () => {
   };
 
   const handleViewReport = (id) => {
-    console.log('Ver relatório da auditoria:', id);
-    // Implement logic to show audit report details
+    logger.debug('View audit report:', id);
   };
 
   return (

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import logger from '../utils/logger';
 
 /**
  * Service para gerenciamento de transportadoras
@@ -22,7 +23,7 @@ export const getTransportadoras = async () => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching transportadoras:', error);
+        logger.error('Error fetching transportadoras:', error);
         throw new Error('Erro ao buscar transportadoras');
     }
 };
@@ -41,7 +42,7 @@ export const getTransportadora = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching transportadora:', error);
+        logger.error('Error fetching transportadora:', error);
         throw new Error('Erro ao buscar transportadora');
     }
 };
@@ -61,7 +62,7 @@ export const getTransportadoraByCpfCnpj = async (cpfCnpj) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching transportadora by CPF/CNPJ:', error);
+        logger.error('Error fetching transportadora by CPF/CNPJ:', error);
         return null;
     }
 };
@@ -108,7 +109,7 @@ export const createTransportadora = async (transportadoraData) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error creating transportadora:', error);
+        logger.error('Error creating transportadora:', error);
         throw new Error(error.message || 'Erro ao criar transportadora');
     }
 };
@@ -146,7 +147,7 @@ export const updateTransportadora = async (id, transportadoraData) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error updating transportadora:', error);
+        logger.error('Error updating transportadora:', error);
         throw new Error('Erro ao atualizar transportadora');
     }
 };
@@ -166,7 +167,7 @@ export const deleteTransportadora = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error deleting transportadora:', error);
+        logger.error('Error deleting transportadora:', error);
         throw new Error('Erro ao deletar transportadora');
     }
 };
@@ -186,7 +187,7 @@ export const searchTransportadoras = async (query, limit = 10) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error searching transportadoras:', error);
+        logger.error('Error searching transportadoras:', error);
         throw new Error('Erro ao buscar transportadoras');
     }
 };

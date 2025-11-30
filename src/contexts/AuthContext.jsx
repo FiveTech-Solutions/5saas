@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import logger from '../utils/logger';
 import { supabase } from '../services/supabase';
 import { getUserSessionData, logout as logoutService } from '../services/userService';
+import { setUser as setSentryUser, clearUser as clearSentryUser } from '../utils/sentry';
 
 const AuthContext = createContext(null);
 
@@ -21,8 +23,13 @@ export const AuthProvider = ({ children }) => {
         sessionData.user.email = user.email;
       }
       setSession(sessionData);
+
+      // Set user in Sentry for error tracking
+      if (sessionData?.user) {
+        setSentryUser(sessionData.user);
+      }
     } catch (error) {
-      console.error("Failed to fetch user session data:", error);
+      logger.error("Failed to fetch user session data:", error);
       setSession(null); // Clear session on error
     }
   };
@@ -58,12 +65,15 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     await logoutService();
     setSession(null);
+
+    // Clear user from Sentry
+    clearSentryUser();
   }, []);
 
   // useMemo helps to prevent re-renders of consumers when the value object has not changed.
   const value = useMemo(() => {
     const isAuthenticated = !!session?.user;
-    
+
     return {
       // Raw session object
       session,

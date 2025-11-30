@@ -6,6 +6,7 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
+import logger from '../utils/logger';
 import './AuditoriaAutosInfracao.css';
 
 const initialInfractionNotices = [
@@ -58,13 +59,11 @@ const AuditoriaAutosInfracao = () => {
   };
 
   const handleViewDetails = (id) => {
-    console.log('Ver detalhes do auto de infração:', id);
-    // Implement logic to show infraction notice details, e.g., open a modal or navigate
+    logger.debug('View infraction notice details:', id);
   };
 
   const handleUpdateStatus = (id) => {
-    console.log('Atualizar status do auto de infração:', id);
-    // Implement logic to update infraction notice status, e.g., open a modal with status options
+    logger.debug('Update infraction notice status:', id);
   };
 
   if (loading) {

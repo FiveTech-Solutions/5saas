@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -32,7 +33,7 @@ const NFSeDetails = () => {
         const data = await getNFSeDetails(id); // Use getNFSeDetails from plugnotasService
         setNfse(data);
       } catch (err) {
-        console.error('Error loading NFS-e details:', err);
+        logger.error('Error loading NFS-e details:', err);
         setError('Erro ao carregar detalhes da NFS-e.');
       } finally {
         setLoading(false);
@@ -49,7 +50,7 @@ const NFSeDetails = () => {
       const data = await getNFSeDetails(id); // Use getNFSeDetails from plugnotasService
       setNfse(data);
     } catch (err) {
-      console.error('Error loading NFS-e details:', err);
+      logger.error('Error loading NFS-e details:', err);
       setError('Erro ao carregar detalhes da NFS-e.');
     } finally {
       setLoading(false);
@@ -63,7 +64,7 @@ const NFSeDetails = () => {
       const blob = await getNFSePDF(id); 
       downloadFile(blob, `nfse-${id}.pdf`);
     } catch (err) {
-      console.error('Error downloading PDF:', err);
+      logger.error('Error downloading PDF:', err);
       alert('Erro ao baixar PDF. Tente novamente.');
     } finally {
       setActionLoading(null);
@@ -77,7 +78,7 @@ const NFSeDetails = () => {
       const blob = await getNFSeXML(id);
       downloadFile(blob, `nfse-${id}.xml`);
     } catch (err) {
-      console.error('Error downloading XML:', err);
+      logger.error('Error downloading XML:', err);
       alert('Erro ao baixar XML. Tente novamente.');
     } finally {
       setActionLoading(null);
@@ -98,7 +99,7 @@ const NFSeDetails = () => {
       setShowEmailModal(false);
       setEmailData({ email: '' });
     } catch (err) {
-      console.error('Error sending email:', err);
+      logger.error('Error sending email:', err);
       alert('Erro ao enviar email. Tente novamente.');
     } finally {
       setActionLoading(null);
@@ -123,7 +124,7 @@ const NFSeDetails = () => {
       setShowCancelModal(false);
       reloadNFSeDetails(); // Reload to get updated status
     } catch (err) {
-      console.error('Error canceling NFS-e:', err);
+      logger.error('Error canceling NFS-e:', err);
       alert('Erro ao cancelar NFS-e. Tente novamente.');
     } finally {
       setActionLoading(null);

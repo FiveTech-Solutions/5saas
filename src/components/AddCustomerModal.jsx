@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logger from '../utils/logger';
 import { createCustomer } from '../services/customerService';
 import { getAddressFromCEP } from '../services/viaCepService';
 // Re-using modal styles from UserManagement
@@ -55,7 +56,7 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerCreated }) => {
       setFormData({ razao_social: '', cpf_cnpj: '', email: '', endereco: { cep: '', logradouro: '', numero: '', bairro: '', cidade: '', estado: '' } });
     } catch (err) {
       setError(err.message || 'Falha ao criar cliente.');
-      console.error(err);
+      logger.error(err);
     } finally {
       setSaving(false);
     }

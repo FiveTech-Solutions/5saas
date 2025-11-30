@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { useIMask } from 'react-imask';
 import { getCompany } from '../services/companyService';
 import { registerCompanyWithPlugNotas, getCompanyDetailsByCnpj } from '../services/plugnotasService';
@@ -144,7 +145,7 @@ const CompanySettings = () => {
       }
     } catch (err) {
       setError(err.message || 'Erro ao consultar CNPJ.');
-      console.error("Erro ao consultar CNPJ:", err);
+      logger.error("Erro ao consultar CNPJ:", err);
     } finally {
       setLoading(false); // Or specific loading state
     }
@@ -186,7 +187,7 @@ const CompanySettings = () => {
         }
       } catch (err) {
         setError('Falha ao carregar os dados da empresa do PlugNotas.');
-        console.error(err);
+        logger.error(err);
       } finally {
         setLoading(false);
       }
@@ -259,7 +260,7 @@ const CompanySettings = () => {
 
     } catch (err) {
       setError(err.message || 'Ocorreu um erro desconhecido ao registrar a empresa no PlugNotas.');
-      console.error(err);
+      logger.error(err);
     } finally {
       setSaving(false);
     }

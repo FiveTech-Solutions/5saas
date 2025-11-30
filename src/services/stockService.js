@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import logger from '../utils/logger';
 
 /**
  * Service para gerenciamento de estoque de produtos
@@ -25,7 +26,7 @@ export const getStock = async (productId) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching stock:', error);
+        logger.error('Error fetching stock:', error);
         throw new Error('Erro ao buscar estoque');
     }
 };
@@ -47,7 +48,7 @@ export const getLowStockProducts = async () => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching low stock products:', error);
+        logger.error('Error fetching low stock products:', error);
         throw new Error('Erro ao buscar produtos com estoque baixo');
     }
 };
@@ -82,7 +83,7 @@ export const getAllStock = async (filters = {}) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching all stock:', error);
+        logger.error('Error fetching all stock:', error);
         throw new Error('Erro ao buscar estoque');
     }
 };
@@ -137,7 +138,7 @@ export const addStockEntry = async (productId, quantidade, motivo, documentoRefe
 
         return movement;
     } catch (error) {
-        console.error('Error adding stock entry:', error);
+        logger.error('Error adding stock entry:', error);
         throw new Error('Erro ao adicionar entrada de estoque');
     }
 };
@@ -193,7 +194,7 @@ export const removeStockExit = async (productId, quantidade, motivo, documentoRe
 
         return movement;
     } catch (error) {
-        console.error('Error removing stock exit:', error);
+        logger.error('Error removing stock exit:', error);
         throw new Error(error.message || 'Erro ao remover saída de estoque');
     }
 };
@@ -243,7 +244,7 @@ export const adjustStock = async (productId, novaQuantidade, motivo) => {
 
         return movement;
     } catch (error) {
-        console.error('Error adjusting stock:', error);
+        logger.error('Error adjusting stock:', error);
         throw new Error('Erro ao ajustar estoque');
     }
 };
@@ -269,7 +270,7 @@ export const updateStockSettings = async (productId, settings) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error updating stock settings:', error);
+        logger.error('Error updating stock settings:', error);
         throw new Error('Erro ao atualizar configurações de estoque');
     }
 };
@@ -311,7 +312,7 @@ export const getStockMovements = async (productId, filters = {}) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching stock movements:', error);
+        logger.error('Error fetching stock movements:', error);
         throw new Error('Erro ao buscar movimentações de estoque');
     }
 };
@@ -334,7 +335,7 @@ export const getRecentMovements = async (limit = 50) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching recent movements:', error);
+        logger.error('Error fetching recent movements:', error);
         throw new Error('Erro ao buscar movimentações recentes');
     }
 };
@@ -363,7 +364,7 @@ export const checkStockAvailability = async (productId, quantidadeNecessaria) =>
             shortage: Math.max(0, quantidadeNecessaria - data.quantidade_atual),
         };
     } catch (error) {
-        console.error('Error checking stock availability:', error);
+        logger.error('Error checking stock availability:', error);
         throw new Error('Erro ao verificar disponibilidade de estoque');
     }
 };

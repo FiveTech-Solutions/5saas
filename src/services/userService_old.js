@@ -54,14 +54,14 @@ export const logout = async () => {
 // The functions below are placeholders and will not work until the backend is adjusted.
 
 export const getUsers = async () => {
-  console.warn('getUsers is not implemented yet with Supabase Auth.');
+  logger.warn('getUsers is not implemented yet with Supabase Auth.');
   return [];
 };
 export const inviteUser = async (email, role) => {
-  console.warn('inviteUser is not implemented yet with Supabase Auth.');
+  logger.warn('inviteUser is not implemented yet with Supabase Auth.');
   return null;
 };
 export const updateUserRole = async (userId, newRole) => {
-  console.warn('updateUserRole is not implemented yet with Supabase Auth.');
+  logger.warn('updateUserRole is not implemented yet with Supabase Auth.');
   return null;
 };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
+import logger from '../utils/logger';
 
 const AdminTools = () => {
   const [updating, setUpdating] = useState(false);
@@ -8,7 +9,7 @@ const AdminTools = () => {
   const updateUserToAdmin = async () => {
     setUpdating(true);
     setResult('');
-    
+
     try {
       // Atualizar o usuário para administrador
       const { data, error } = await supabase
@@ -22,29 +23,29 @@ const AdminTools = () => {
       }
 
       setResult('✅ Usuário atualizado com sucesso! Recarregue a página.');
-      console.log('Usuário atualizado:', data);
+      logger.debug('User updated:', data);
     } catch (error) {
       setResult(`❌ Erro: ${error.message}`);
-      console.error('Erro ao atualizar:', error);
+      logger.error('Error updating user:', error);
     } finally {
       setUpdating(false);
     }
   };
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      top: '10px', 
-      right: '10px', 
-      background: 'white', 
-      border: '2px solid #ccc', 
+    <div style={{
+      position: 'fixed',
+      top: '10px',
+      right: '10px',
+      background: 'white',
+      border: '2px solid #ccc',
       padding: '15px',
       borderRadius: '8px',
       zIndex: 9999,
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
     }}>
       <h4>Admin Tools</h4>
-      <button 
+      <button
         onClick={updateUserToAdmin}
         disabled={updating}
         style={{

@@ -3,14 +3,21 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { StateProvider } from './contexts/StateContext';
+import ErrorBoundary from './components/ErrorBoundary';
+import { initSentry } from './utils/sentry';
 import './index.css';
+
+// Initialize Sentry before rendering
+initSentry();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <StateProvider>
-        <App />
-      </StateProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <StateProvider>
+          <App />
+        </StateProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>
 );

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import logger from '../utils/logger';
 
 const StateContext = createContext();
 
@@ -8,7 +9,7 @@ export const StateProvider = ({ children }) => {
       const storedState = sessionStorage.getItem('appState');
       return storedState ? JSON.parse(storedState) : {};
     } catch (error) {
-      console.error('Error reading state from sessionStorage:', error);
+      logger.error('Error reading state from sessionStorage:', error);
       return {};
     }
   });
@@ -17,7 +18,7 @@ export const StateProvider = ({ children }) => {
     try {
       sessionStorage.setItem('appState', JSON.stringify(appState));
     } catch (error) {
-      console.error('Error writing state to sessionStorage:', error);
+      logger.error('Error writing state to sessionStorage:', error);
     }
   }, [appState]);
 

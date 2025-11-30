@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import logger from '../utils/logger';
 
 /**
  * Service para gerenciamento de categorias e subcategorias de produtos
@@ -22,7 +23,7 @@ export const getCategories = async () => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching categories:', error);
+        logger.error('Error fetching categories:', error);
         throw new Error('Erro ao buscar categorias');
     }
 };
@@ -41,7 +42,7 @@ export const getCategory = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching category:', error);
+        logger.error('Error fetching category:', error);
         throw new Error('Erro ao buscar categoria');
     }
 };
@@ -68,7 +69,7 @@ export const createCategory = async (categoryData) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error creating category:', error);
+        logger.error('Error creating category:', error);
         throw new Error('Erro ao criar categoria');
     }
 };
@@ -96,7 +97,7 @@ export const updateCategory = async (id, categoryData) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error updating category:', error);
+        logger.error('Error updating category:', error);
         throw new Error('Erro ao atualizar categoria');
     }
 };
@@ -116,7 +117,7 @@ export const deleteCategory = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error deleting category:', error);
+        logger.error('Error deleting category:', error);
         throw new Error('Erro ao deletar categoria');
     }
 };
@@ -140,7 +141,7 @@ export const getSubcategories = async (categoryId) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching subcategories:', error);
+        logger.error('Error fetching subcategories:', error);
         throw new Error('Erro ao buscar subcategorias');
     }
 };
@@ -164,7 +165,7 @@ export const createSubcategory = async (subcategoryData) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error creating subcategory:', error);
+        logger.error('Error creating subcategory:', error);
         throw new Error('Erro ao criar subcategoria');
     }
 };
@@ -189,7 +190,7 @@ export const updateSubcategory = async (id, subcategoryData) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error updating subcategory:', error);
+        logger.error('Error updating subcategory:', error);
         throw new Error('Erro ao atualizar subcategoria');
     }
 };
@@ -209,7 +210,7 @@ export const deleteSubcategory = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error deleting subcategory:', error);
+        logger.error('Error deleting subcategory:', error);
         throw new Error('Erro ao deletar subcategoria');
     }
 };
@@ -232,7 +233,7 @@ export const searchNCM = async (query) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error searching NCM:', error);
+        logger.error('Error searching NCM:', error);
         throw new Error('Erro ao buscar NCM');
     }
 };
@@ -256,7 +257,7 @@ export const searchCFOP = async (query, tipoOperacao = null) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error searching CFOP:', error);
+        logger.error('Error searching CFOP:', error);
         throw new Error('Erro ao buscar CFOP');
     }
 };
@@ -275,7 +276,7 @@ export const searchCST = async (tipoImposto = 'ICMS') => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error searching CST:', error);
+        logger.error('Error searching CST:', error);
         throw new Error('Erro ao buscar CST');
     }
 };

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import logger from '../utils/logger';
 
 /**
  * Service for handling NFS-e data in Supabase.
@@ -12,7 +13,7 @@ export const listNfses = async () => {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching NFS-e from Supabase:', error);
+    logger.error('Error fetching NFS-e from Supabase:', error);
     throw error;
   }
 
@@ -37,7 +38,7 @@ export const createNfse = async (nfseToSave, userId) => {
     .select();
 
   if (error) {
-    console.error('Error creating NFS-e in Supabase:', error);
+    logger.error('Error creating NFS-e in Supabase:', error);
     throw error;
   }
 
@@ -53,7 +54,7 @@ export const getNfseById = async (id) => {
     .single();
 
   if (error) {
-    console.error('Error fetching NFS-e by ID from Supabase:', error);
+    logger.error('Error fetching NFS-e by ID from Supabase:', error);
     throw error;
   }
 
@@ -69,7 +70,7 @@ export const updateNfse = async (id, updates) => {
     .select();
 
   if (error) {
-    console.error('Error updating NFS-e in Supabase:', error);
+    logger.error('Error updating NFS-e in Supabase:', error);
     throw error;
   }
 
@@ -84,7 +85,7 @@ export const deleteNfse = async (id) => {
     .eq('id', id);
 
   if (error) {
-    console.error('Error deleting NFS-e from Supabase:', error);
+    logger.error('Error deleting NFS-e from Supabase:', error);
     throw error;
   }
 

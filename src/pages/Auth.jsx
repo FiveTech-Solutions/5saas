@@ -4,6 +4,7 @@ import { login, signup } from '../services/userService';
 import { useAuth } from '../contexts/AuthContext';
 import CookieConsent from '../components/CookieConsent';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
+import logger from '../utils/logger';
 import './Auth.css';
 
 const Auth = () => {
@@ -20,11 +21,9 @@ const Auth = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAuth();
 
-  // Redirecionar se já estiver autenticado
   useEffect(() => {
-    console.log('Auth Debug:', { isAuthenticated, authLoading });
     if (!authLoading && isAuthenticated) {
-      console.log('Redirecting to home...');
+      logger.debug('User already authenticated, redirecting to home');
       navigate('/');
     }
   }, [isAuthenticated, authLoading, navigate]);
@@ -44,18 +43,12 @@ const Auth = () => {
       }
 
       if (result && result.user) {
-        // A pequena espera garante que o AuthContext tenha tempo de ser atualizado
-        // antes do redirecionamento, evitando piscar a tela de login novamente.
-        setTimeout(() => {
-          navigate('/');
-        }, 100);
+        setTimeout(() => navigate('/'), 100);
       } else {
-        // Este caso pode ocorrer se a função de signup não retornar um usuário
-        // ou se houver confirmação de e-mail habilitada (que não é o caso aqui).
         setError('Não foi possível autenticar. Verifique os dados ou tente novamente.');
       }
     } catch (error) {
-      console.error('Erro na autenticação:', error);
+      logger.error('Authentication error:', error);
       setError(error.message || 'Ocorreu um erro durante a autenticação.');
     } finally {
       setLoading(false);
@@ -65,7 +58,6 @@ const Auth = () => {
   const openPolicyModal = () => setPolicyModalOpen(true);
   const closePolicyModal = () => setPolicyModalOpen(false);
 
-  // Mostrar loading enquanto verifica autenticação
   if (authLoading) {
     return (
       <div className="auth-container">
@@ -85,7 +77,7 @@ const Auth = () => {
         <p className="auth-subtitle">
           {isSignUp ? 'Junte-se a nós!' : 'Bem-vindo de volta!'}
         </p>
-        
+
         <form onSubmit={handleAuth}>
           {isSignUp && (
             <>
@@ -113,7 +105,7 @@ const Auth = () => {
               </div>
             </>
           )}
-          
+
           <div className="input-group">
             <label htmlFor="email">Email</label>
             <input
@@ -125,7 +117,7 @@ const Auth = () => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          
+
           <div className="input-group">
             <label htmlFor="password">Senha</label>
             <input
@@ -151,9 +143,9 @@ const Auth = () => {
             </div>
           )}
 
-          <button 
-            type="submit" 
-            className="btn-primary auth-button" 
+          <button
+            type="submit"
+            className="btn-primary auth-button"
             disabled={loading}
           >
             {loading ? (
@@ -170,8 +162,8 @@ const Auth = () => {
           {isSignUp ? (
             <p>
               Já tem uma conta?{' '}
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   setIsSignUp(false);
                   setError(null);
@@ -185,8 +177,8 @@ const Auth = () => {
           ) : (
             <p>
               Não tem uma conta?{' '}
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   setIsSignUp(true);
                   setError(null);
@@ -208,7 +200,7 @@ const Auth = () => {
       </div>
 
       <CookieConsent />
-      
+
       {isPolicyModalOpen && (
         <PrivacyPolicyModal onClose={closePolicyModal} />
       )}

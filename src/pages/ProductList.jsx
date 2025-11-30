@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { getProducts, deleteProduct } from '../services/productService';
 import { Add, Edit, Delete, Search, FilterList } from '@mui/icons-material';
@@ -24,7 +25,7 @@ const ProductList = () => {
             const data = await getProducts(filters);
             setProducts(data);
         } catch (error) {
-            console.error('Error loading products:', error);
+            logger.error('Error loading products:', error);
             alert('Erro ao carregar produtos');
         } finally {
             setLoading(false);
@@ -39,7 +40,7 @@ const ProductList = () => {
             alert('Produto excluído com sucesso!');
             loadProducts();
         } catch (error) {
-            console.error('Error deleting product:', error);
+            logger.error('Error deleting product:', error);
             alert('Erro ao excluir produto');
         }
     };

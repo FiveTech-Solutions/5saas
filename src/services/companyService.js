@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import logger from '../utils/logger';
 import { getCompanyDetailsByCnpj } from './plugnotasService'; // Import PlugNotas service
 
 /**
@@ -21,7 +22,7 @@ export const getCompany = async () => {
     // but for now, return as is.
     return companyData;
   } catch (error) {
-    console.error('Erro ao buscar dados da empresa no PlugNotas:', error);
+    logger.error('Erro ao buscar dados da empresa no PlugNotas:', error);
     // Depending on desired behavior, you might want to return null or re-throw
     return null; 
   }
@@ -55,7 +56,7 @@ export const getCompany = async () => {
 //     .single();
 
 //   if (error) {
-//     console.error('Erro ao salvar dados da empresa:', error);
+//     logger.error('Erro ao salvar dados da empresa:', error);
 //     throw error;
 //   }
 

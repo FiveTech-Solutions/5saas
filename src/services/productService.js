@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { handleServiceError } from '../utils/errorHandler';
 
 /**
  * Service para gerenciamento de produtos
@@ -41,8 +42,7 @@ export const getProducts = async (filters = {}) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching products:', error);
-        throw new Error('Erro ao buscar produtos');
+        handleServiceError(error, 'getProducts', 'Erro ao buscar produtos');
     }
 };
 
@@ -67,8 +67,7 @@ export const getProduct = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching product:', error);
-        throw new Error('Erro ao buscar produto');
+        handleServiceError(error, 'getProduct', 'Erro ao buscar produto');
     }
 };
 
@@ -92,7 +91,7 @@ export const getProductByCode = async (codigo) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching product by code:', error);
+        logger.error('Error fetching product by code:', error);
         return null;
     }
 };
@@ -186,8 +185,119 @@ export const createProduct = async (productData) => {
 
         return product;
     } catch (error) {
-        console.error('Error creating product:', error);
-        throw new Error(error.message || 'Erro ao criar produto');
+        handleServiceError(error, 'createProduct', 'Erro ao criar produto');
+    }
+};
+
+/**
+ * Cria múltiplos produtos em lote (Batch Insert)
+ * Otimizado para performance com transações implícitas do Supabase
+ */
+export const createProductsBatch = async (productsData, onProgress) => {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Usuário não autenticado');
+
+        const { data: userData } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+
+        const BATCH_SIZE = 50;
+        const totalProducts = productsData.length;
+        let processedCount = 0;
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: []
+        };
+
+        // Processar em lotes
+        for (let i = 0; i < totalProducts; i += BATCH_SIZE) {
+            const batch = productsData.slice(i, i + BATCH_SIZE);
+
+            // Preparar dados para inserção
+            const productsToInsert = batch.map(p => ({
+                user_id: user.id,
+                tenant_id: userData.tenant_id,
+                codigo: p.codigo,
+                nome: p.nome,
+                ncm: p.ncm || null,
+                cest: p.cest || null,
+                unidade_medida: p.unidade || 'UN',
+                preco_venda: p.preco_venda || 0,
+                descricao: p.descricao || null,
+                ativo: true
+            }));
+
+            // Tentar inserir o lote
+            // Nota: Supabase insert aceita array para bulk insert
+            const { data: insertedProducts, error } = await supabase
+                .from('products')
+                .insert(productsToInsert)
+                .select();
+
+            if (error) {
+                // Se falhar o lote inteiro, registrar erro
+                results.failed += batch.length;
+                results.errors.push({
+                    batchIndex: i,
+                    message: error.message
+                });
+            } else {
+                // Se sucesso, criar preços e estoques para os produtos inseridos
+                results.success += insertedProducts.length;
+
+                // Bulk insert de preços
+                const pricesToInsert = insertedProducts.map(p => ({
+                    product_id: p.id,
+                    preco_venda: p.preco_venda || 0, // Supabase retorna colunas extras se definidas no schema? Não, p.preco_venda não existe no retorno do insert de products se não for coluna.
+                    // Ajuste: precisamos pegar o preço do objeto original.
+                    // Como a ordem é preservada, podemos tentar mapear pelo index ou código.
+                    // Melhor abordagem: map pelo código se for único, ou assumir ordem.
+                    // Simplificação: vamos usar um valor default seguro ou refazer o map.
+                }));
+
+                // Correção: Precisamos dos dados originais para preço e estoque.
+                // Vamos iterar sobre os produtos inseridos e parear com os dados originais.
+                const pricesData = [];
+                const stockData = [];
+
+                insertedProducts.forEach(insertedProd => {
+                    const originalProd = batch.find(p => p.codigo === insertedProd.codigo);
+                    if (originalProd) {
+                        pricesData.push({
+                            product_id: insertedProd.id,
+                            preco_venda: originalProd.preco_venda || 0,
+                            preco_custo: 0
+                        });
+                        stockData.push({
+                            product_id: insertedProd.id,
+                            quantidade_atual: 0,
+                            quantidade_minima: 0
+                        });
+                    }
+                });
+
+                if (pricesData.length > 0) {
+                    await supabase.from('product_prices').insert(pricesData);
+                }
+                if (stockData.length > 0) {
+                    await supabase.from('product_stock').insert(stockData);
+                }
+            }
+
+            processedCount += batch.length;
+            if (onProgress) {
+                onProgress(Math.min(processedCount, totalProducts), totalProducts);
+            }
+        }
+
+        return results;
+
+    } catch (error) {
+        handleServiceError(error, 'createProductsBatch', 'Erro na importação em lote');
     }
 };
 
@@ -240,8 +350,7 @@ export const updateProduct = async (id, productData) => {
 
         return product;
     } catch (error) {
-        console.error('Error updating product:', error);
-        throw new Error('Erro ao atualizar produto');
+        handleServiceError(error, 'updateProduct', 'Erro ao atualizar produto');
     }
 };
 
@@ -260,8 +369,7 @@ export const deleteProduct = async (id) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error deleting product:', error);
-        throw new Error('Erro ao deletar produto');
+        handleServiceError(error, 'deleteProduct', 'Erro ao deletar produto');
     }
 };
 
@@ -294,8 +402,7 @@ export const searchProducts = async (query, limit = 10) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error searching products:', error);
-        throw new Error('Erro ao buscar produtos');
+        handleServiceError(error, 'searchProducts', 'Erro ao buscar produtos');
     }
 };
 
@@ -316,8 +423,7 @@ export const getProductTaxes = async (productId) => {
         if (error) throw error;
         return data;
     } catch (error) {
-        console.error('Error fetching product taxes:', error);
-        throw new Error('Erro ao buscar impostos do produto');
+        handleServiceError(error, 'getProductTaxes', 'Erro ao buscar impostos do produto');
     }
 };
 
@@ -356,7 +462,6 @@ export const updateProductTaxes = async (productId, taxesData) => {
 
         return [];
     } catch (error) {
-        console.error('Error updating product taxes:', error);
-        throw new Error('Erro ao atualizar impostos do produto');
+        handleServiceError(error, 'updateProductTaxes', 'Erro ao atualizar impostos do produto');
     }
 };

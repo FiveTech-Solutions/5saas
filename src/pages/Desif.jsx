@@ -6,6 +6,7 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
+import logger from '../utils/logger';
 import './Desif.css';
 
 const Desif = () => {
@@ -74,9 +75,8 @@ const Desif = () => {
     }
 
     try {
-      // Simulate API call for submission
-      console.log('Submitting DES-IF declaration:', declarationForm);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate network delay
+      logger.debug('Submitting DES-IF declaration:', declarationForm);
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const newDeclaration = {
         id: String(declarations.length + 1),
@@ -94,7 +94,7 @@ const Desif = () => {
         xmlContent: '',
       });
     } catch (err) {
-      console.error("Erro ao enviar declaração DES-IF:", err);
+      logger.error('Error submitting DES-IF declaration:', err);
       setError(err.message || 'Erro ao enviar declaração DES-IF.');
     } finally {
       setLoading(false);
@@ -111,13 +111,11 @@ const Desif = () => {
   };
 
   const handleViewDetails = (id) => {
-    console.log('View details for declaration:', id);
-    // Implement logic to show declaration details
+    logger.debug('View details for declaration:', id);
   };
 
   const handleDownload = (id) => {
-    console.log('Download declaration:', id);
-    // Implement logic to download the declaration file
+    logger.debug('Download declaration:', id);
   };
 
   return (

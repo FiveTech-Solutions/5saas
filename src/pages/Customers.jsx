@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../services/customerService';
 // Re-using styles from UserManagement for consistency
 import './UserManagement.css'; 
@@ -15,7 +16,7 @@ const Customers = () => {
       setCustomers(customerList);
     } catch (err) {
       setError('Falha ao carregar clientes.');
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -32,7 +33,7 @@ const Customers = () => {
         await loadCustomers(); // Refresh list
       } catch (err) {
         setError('Falha ao excluir cliente.');
-        console.error(err);
+        logger.error(err);
       }
     }
   };

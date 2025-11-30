@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { useAuthorization } from '../hooks/useAuthorization';
 import { ProtectedContent } from '../components/ProtectedRoute';
 import { getUsers, inviteUser, updateUserRole } from '../services/userService';
@@ -36,7 +37,7 @@ const UserManagement = () => {
       setUsers(userList);
     } catch (err) {
       setError('Falha ao carregar usuários. Verifique se as Edge Functions estão implantadas.');
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ const UserManagement = () => {
       await loadUsers(); // Refresh the list
     } catch (err) {
       setError('Falha ao convidar usuário.');
-      console.error(err);
+      logger.error(err);
     } finally {
       setInviting(false);
     }
@@ -70,7 +71,7 @@ const UserManagement = () => {
       await loadUsers(); // Refresh the list
     } catch (err) {
       setError('Falha ao atualizar perfil do usuário.');
-      console.error(err);
+      logger.error(err);
     }
   };
 

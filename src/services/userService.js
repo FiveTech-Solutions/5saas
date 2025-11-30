@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import logger from '../utils/logger';
 
 /**
  * Fetches all necessary session data for a logged-in user in a single query.
@@ -33,7 +34,7 @@ export const getUserSessionData = async (userId) => {
       .single();
 
     if (error) {
-      console.error('Error fetching user session data:', error);
+      logger.error('Error fetching user session data:', error);
       throw error;
     }
 
@@ -77,7 +78,7 @@ export const getUserSessionData = async (userId) => {
     return sessionData;
 
   } catch (error) {
-    console.error('Error in getUserSessionData:', error);
+    logger.error('Error in getUserSessionData:', error);
     return null; // Return null to handle gracefully in the UI
   }
 };
@@ -138,7 +139,7 @@ export const login = async (email, password) => {
 export const logout = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) {
-    console.error('Error during logout:', error);
+    logger.error('Error during logout:', error);
     // We don't throw an error here to ensure the logout flow on the client-side completes.
   }
 };
@@ -161,12 +162,12 @@ export const getUserProfile = async (userId) => {
       .single();
 
     if (error) {
-      console.error('Error fetching user profile:', error);
+      logger.error('Error fetching user profile:', error);
       return null;
     }
     return data;
   } catch (error) {
-    console.error('Error in getUserProfile:', error);
+    logger.error('Error in getUserProfile:', error);
     return null;
   }
 };
@@ -182,7 +183,7 @@ export const listUsersInTenant = async () => {
       .select('id, full_name, email, role, created_at'); // Specify fields to avoid over-fetching
 
     if (error) {
-      console.error('Error listing users:', error);
+      logger.error('Error listing users:', error);
       throw error;
     }
     return data;
@@ -219,13 +220,13 @@ export const inviteUser = async (email, role = 'operador') => {
     });
 
     if (error) {
-      console.error('Error inviting user:', error);
+      logger.error('Error inviting user:', error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error('Error in inviteUser:', error);
+    logger.error('Error in inviteUser:', error);
     throw new Error('Failed to invite user. Please ensure the Edge Function is deployed.');
   }
 };
@@ -248,7 +249,7 @@ export const updateUserRole = async (userId, newRole) => {
       .single();
 
     if (userError) {
-      console.error('Error updating user role:', userError);
+      logger.error('Error updating user role:', userError);
       throw userError;
     }
 
@@ -267,13 +268,13 @@ export const updateUserRole = async (userId, newRole) => {
       .eq('id', userId);
 
     if (profileError) {
-      console.warn('Error updating user profile role:', profileError);
+      logger.warn('Error updating user profile role:', profileError);
       // Don't throw here, as the main update succeeded
     }
 
     return userData;
   } catch (error) {
-    console.error('Error in updateUserRole:', error);
+    logger.error('Error in updateUserRole:', error);
     throw new Error('Failed to update user role.');
   }
 };

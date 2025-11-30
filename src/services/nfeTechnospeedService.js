@@ -32,7 +32,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
 
         return data;
     } catch (error) {
-        console.error('API Request Error:', error);
+        logger.error('API Request Error:', error);
         throw error;
     }
 };
@@ -171,7 +171,7 @@ export const emitirNFe = async (nfeData, company, customer, items) => {
             protocol: response[0]?.protocol,
         };
     } catch (error) {
-        console.error('Error emitting NFe:', error);
+        logger.error('Error emitting NFe:', error);
         throw new Error(error.message || 'Erro ao emitir NF-e');
     }
 };
@@ -184,7 +184,7 @@ export const consultarNFe = async (idNota) => {
         const response = await apiRequest(`/nfe/${idNota}/resumo`, 'GET');
         return response;
     } catch (error) {
-        console.error('Error consulting NFe:', error);
+        logger.error('Error consulting NFe:', error);
         throw new Error('Erro ao consultar NF-e');
     }
 };
@@ -197,7 +197,7 @@ export const downloadXML = async (idNota) => {
         const response = await apiRequest(`/nfe/${idNota}/xml`, 'GET');
         return response;
     } catch (error) {
-        console.error('Error downloading XML:', error);
+        logger.error('Error downloading XML:', error);
         throw new Error('Erro ao baixar XML');
     }
 };
@@ -210,7 +210,7 @@ export const downloadPDF = async (idNota) => {
         const response = await apiRequest(`/nfe/${idNota}/pdf`, 'GET');
         return response;
     } catch (error) {
-        console.error('Error downloading PDF:', error);
+        logger.error('Error downloading PDF:', error);
         throw new Error('Erro ao baixar PDF');
     }
 };
@@ -234,7 +234,7 @@ export const cancelarNFe = async (chaveAcesso, justificativa) => {
 
         return response;
     } catch (error) {
-        console.error('Error canceling NFe:', error);
+        logger.error('Error canceling NFe:', error);
         throw new Error(error.message || 'Erro ao cancelar NF-e');
     }
 };
@@ -255,7 +255,7 @@ export const cartaCorrecao = async (chaveAcesso, correcao, sequencia = 1) => {
 
         return response;
     } catch (error) {
-        console.error('Error sending carta de correção:', error);
+        logger.error('Error sending carta de correção:', error);
         throw new Error(error.message || 'Erro ao enviar carta de correção');
     }
 };
@@ -282,7 +282,7 @@ export const inutilizarNumero = async (serie, numeroInicial, numeroFinal, justif
 
         return response;
     } catch (error) {
-        console.error('Error inutilizing numbers:', error);
+        logger.error('Error inutilizing numbers:', error);
         throw new Error(error.message || 'Erro ao inutilizar numeração');
     }
 };
@@ -302,7 +302,7 @@ export const confirmarOperacao = async (chaveAcesso) => {
 
         return response;
     } catch (error) {
-        console.error('Error confirming operation:', error);
+        logger.error('Error confirming operation:', error);
         throw new Error('Erro ao confirmar operação');
     }
 };
@@ -318,7 +318,7 @@ export const desconhecerOperacao = async (chaveAcesso) => {
 
         return response;
     } catch (error) {
-        console.error('Error rejecting operation:', error);
+        logger.error('Error rejecting operation:', error);
         throw new Error('Erro ao desconhecer operação');
     }
 };
@@ -335,7 +335,7 @@ export const consultarChaveAcesso = async (chaveAcesso) => {
         const response = await apiRequest(`/nfe/consulta/${chaveAcesso}`, 'GET');
         return response;
     } catch (error) {
-        console.error('Error consulting chave de acesso:', error);
+        logger.error('Error consulting chave de acesso:', error);
         throw new Error('Erro ao consultar chave de acesso');
     }
 };
@@ -348,7 +348,7 @@ export const consultarStatusServico = async (uf = 'SP') => {
         const response = await apiRequest(`/nfe/status/${uf}`, 'GET');
         return response;
     } catch (error) {
-        console.error('Error consulting service status:', error);
+        logger.error('Error consulting service status:', error);
         throw new Error('Erro ao consultar status do serviço');
     }
 };
@@ -379,7 +379,7 @@ export const processWebhookNotification = (webhookData) => {
 
         return notification;
     } catch (error) {
-        console.error('Error processing webhook:', error);
+        logger.error('Error processing webhook:', error);
         throw new Error('Erro ao processar notificação do webhook');
     }
 };

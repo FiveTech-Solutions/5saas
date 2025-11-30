@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TextField, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
-import { getProduct, createProduct, updateProduct, getProducts } from '../services/productService';
+import { TextField, Button, MenuItem, Select, InputLabel, FormControl, IconButton, InputAdornment } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
+import { NumericFormat } from 'react-number-format';
+import { getProduct, createProduct, updateProduct } from '../services/productService';
+import { getCategories } from '../services/categoryService';
+import { productSchema } from '../schemas/productSchema';
+import AddCategoryModal from '../components/AddCategoryModal';
 import './ProductForm.css';
 
 const ProductForm = () => {
     const navigate = useNavigate();
-    const { id } = useParams(); // if editing, id will be present
+    const { id } = useParams();
     const isEdit = Boolean(id);
 
     const [product, setProduct] = useState({
@@ -18,25 +24,22 @@ const ProductForm = () => {
     });
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
-    // Load categories for select (simple fetch of products with distinct categories)
+    // Load categories
     useEffect(() => {
-        const loadCategories = async () => {
-            try {
-                const data = await getProducts();
-                const unique = [];
-                data.forEach(p => {
-                    if (p.category && !unique.find(c => c.id === p.category.id)) {
-                        unique.push(p.category);
-                    }
-                });
-                setCategories(unique);
-            } catch (e) {
-                console.error('Erro ao carregar categorias', e);
-            }
-        };
         loadCategories();
     }, []);
+
+    const loadCategories = async () => {
+        try {
+            const data = await getCategories();
+            setCategories(data || []);
+        } catch (e) {
+            logger.error('Erro ao carregar categorias', e);
+        }
+    };
 
     // Load product details when editing
     useEffect(() => {
@@ -52,7 +55,7 @@ const ProductForm = () => {
                         categoria_id: data.category?.id || ''
                     });
                 } catch (e) {
-                    console.error('Erro ao buscar produto', e);
+                    logger.error('Erro ao buscar produto', e);
                     alert('Não foi possível carregar o produto.');
                 }
             };
@@ -63,10 +66,52 @@ const ProductForm = () => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setProduct(prev => ({ ...prev, [name]: value }));
+        // Clear error when user types
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: null }));
+        }
+    };
+
+    const handlePriceChange = (values) => {
+        setProduct(prev => ({ ...prev, preco_venda: values.floatValue || '' }));
+        if (errors.preco_venda) {
+            setErrors(prev => ({ ...prev, preco_venda: null }));
+        }
+    };
+
+    const validateForm = () => {
+        try {
+            const dataToValidate = {
+                ...product,
+                preco_venda: Number(product.preco_venda),
+                category_id: product.categoria_id || '',
+                origem_mercadoria: '',
+            };
+
+            productSchema.parse(dataToValidate);
+            setErrors({});
+            return true;
+        } catch (err) {
+            if (err.errors) {
+                const newErrors = {};
+                err.errors.forEach(error => {
+                    const field = error.path[0];
+                    const formField = field === 'category_id' ? 'categoria_id' : field;
+                    newErrors[formField] = error.message;
+                });
+                setErrors(newErrors);
+            }
+            return false;
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
         setLoading(true);
         try {
             const payload = {
@@ -85,11 +130,17 @@ const ProductForm = () => {
             }
             navigate('/produtos');
         } catch (error) {
-            console.error('Erro ao salvar produto', error);
+            logger.error('Erro ao salvar produto', error);
             alert('Falha ao salvar o produto. Verifique o console para detalhes.');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCategoryCreated = (newCategory) => {
+        // Reload categories and select the new one
+        loadCategories();
+        setProduct(prev => ({ ...prev, categoria_id: newCategory.id }));
     };
 
     return (
@@ -103,6 +154,8 @@ const ProductForm = () => {
                     onChange={handleChange}
                     required
                     fullWidth
+                    error={!!errors.nome}
+                    helperText={errors.nome}
                     margin="normal"
                 />
                 <TextField
@@ -112,23 +165,32 @@ const ProductForm = () => {
                     onChange={handleChange}
                     required
                     fullWidth
+                    error={!!errors.codigo}
+                    helperText={errors.codigo}
                     margin="normal"
                 />
-                <TextField
+                <NumericFormat
+                    customInput={TextField}
                     label="Preço de Venda"
-                    name="preco_venda"
-                    type="number"
                     value={product.preco_venda}
-                    onChange={handleChange}
+                    onValueChange={handlePriceChange}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale
+                    allowNegative={false}
                     required
                     fullWidth
+                    error={!!errors.preco_venda}
+                    helperText={errors.preco_venda}
                     margin="normal"
                 />
                 <FormControl fullWidth margin="normal">
-                    <InputLabel id="unidade-label">Unidade</InputLabel>
+                    <InputLabel id="unidade-label">Unidade de Medida</InputLabel>
                     <Select
                         labelId="unidade-label"
-                        label="Unidade"
+                        label="Unidade de Medida"
                         name="unidade_medida"
                         value={product.unidade_medida}
                         onChange={handleChange}
@@ -136,7 +198,11 @@ const ProductForm = () => {
                         <MenuItem value="UN">UN</MenuItem>
                         <MenuItem value="KG">KG</MenuItem>
                         <MenuItem value="L">L</MenuItem>
+                        <MenuItem value="M">M</MenuItem>
+                        <MenuItem value="CX">CX</MenuItem>
+                        <MenuItem value="PC">PC</MenuItem>
                     </Select>
+                    {errors.unidade_medida && <p style={{ color: '#d32f2f', fontSize: '0.75rem', marginLeft: '14px', marginTop: '3px' }}>{errors.unidade_medida}</p>}
                 </FormControl>
                 <FormControl fullWidth margin="normal">
                     <InputLabel id="categoria-label">Categoria</InputLabel>
@@ -146,7 +212,21 @@ const ProductForm = () => {
                         name="categoria_id"
                         value={product.categoria_id}
                         onChange={handleChange}
+                        endAdornment={
+                            <InputAdornment position="end" sx={{ mr: 2 }}>
+                                <IconButton
+                                    edge="end"
+                                    onClick={() => setCategoryModalOpen(true)}
+                                    size="small"
+                                    color="primary"
+                                    title="Adicionar nova categoria"
+                                >
+                                    <AddIcon />
+                                </IconButton>
+                            </InputAdornment>
+                        }
                     >
+                        <MenuItem value="">Nenhuma</MenuItem>
                         {categories.map(cat => (
                             <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
                         ))}
@@ -169,6 +249,12 @@ const ProductForm = () => {
                     Cancelar
                 </Button>
             </form>
+
+            <AddCategoryModal
+                open={categoryModalOpen}
+                onClose={() => setCategoryModalOpen(false)}
+                onCategoryCreated={handleCategoryCreated}
+            />
         </div>
     );
 };

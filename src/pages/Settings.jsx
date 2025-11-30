@@ -21,19 +21,10 @@ const Settings = () => {
       setMessage({ type: 'error', text: 'Por favor, selecione o arquivo do certificado e digite a senha.' });
       return;
     }
-    
+
     setUploading(true);
     setMessage({ type: 'info', text: 'Funcionalidade de upload ainda não implementada.' });
-    
-    // Placeholder for future implementation:
-    // 1. Create a FormData object
-    // 2. Append the file and password
-    // 3. Call a service function to upload the certificate to PlugNotas API
-    //    (e.g., `uploadCertificate(formData)`)
-    console.log('File:', certificateFile.name);
-    console.log('Password:', certificatePassword);
-    
-    // Simulate API call
+
     setTimeout(() => {
       setUploading(false);
     }, 2000);

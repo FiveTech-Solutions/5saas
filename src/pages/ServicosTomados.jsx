@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 import { listNfses } from '../services/nfseSupabaseService';
 import { useAuth } from '../contexts/AuthContext';
 import './ServicosTomados.css'; // Assuming you'll create a CSS file for this page
@@ -16,7 +17,7 @@ const ServicosTomados = () => {
         const data = await listNfses();
         setNfses(data);
       } catch (err) {
-        console.error("Error fetching NFSe list:", err);
+        logger.error("Error fetching NFSe list:", err);
         setError("Failed to load services. Please try again later.");
       } finally {
         setLoading(false);
