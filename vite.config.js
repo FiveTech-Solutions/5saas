@@ -4,6 +4,14 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    // Configuração para SPA - redireciona todas as rotas para index.html
+    historyApiFallback: true,
+  },
+  preview: {
+    // Mesma configuração para o preview build
+    historyApiFallback: true,
+  },
   test: {
     globals: true,
     environment: 'jsdom',

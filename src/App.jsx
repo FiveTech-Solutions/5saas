@@ -1,3 +1,4 @@
+
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
@@ -138,10 +139,14 @@ function App() {
             <Route path="produtos/novo" element={<ProductForm />} />
             <Route path="produtos/editar/:id" element={<ProductForm />} />
             <Route path="produtos/importar" element={<ProductImport />} />
-            {/* Category Routes (admin only) */}
+            {/* Category Routes (admin only) - Rotas principais */}
             <Route path="categorias" element={<RoleProtectedRoute role="admin"><CategoryList /></RoleProtectedRoute>} />
             <Route path="categorias/novo" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
             <Route path="categorias/editar/:id" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
+            {/* Category Routes - Rotas alternativas dentro de produtos */}
+            <Route path="produtos/categorias" element={<RoleProtectedRoute role="admin"><CategoryList /></RoleProtectedRoute>} />
+            <Route path="produtos/categorias/novo" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
+            <Route path="produtos/categorias/editar/:id" element={<RoleProtectedRoute role="admin"><CategoryForm /></RoleProtectedRoute>} />
             {/* NFC-e Routes */}
             <Route path="nfce" element={<FeatureProtectedRoute feature="NFCE"><NFCeList /></FeatureProtectedRoute>} />
             <Route path="nfce/new" element={<FeatureProtectedRoute feature="NFCE"><NFCeForm /></FeatureProtectedRoute>} />

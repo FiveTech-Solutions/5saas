@@ -7,6 +7,7 @@ import { getCompanyDetailsByCnpj, registerTomadorPlugNotas, getTomadorPlugNotas,
 import { getAddressFromCEP } from '../services/viaCepService';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppState } from '../contexts/StateContext';
+import { useToast } from '../contexts/ToastContext';
 import CustomerSelector from '../components/CustomerSelector';
 import AddCustomerModal from '../components/AddCustomerModal';
 import { useIMask } from 'react-imask';
@@ -19,25 +20,24 @@ const generateIdIntegracao = () => `ID-${Date.now()}`;
 const NewNFSe = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { getPageData, setPageData } = useAppState(); // Use the state hook
+  const { getPageData, setPageData } = useAppState();
+  const toast = useToast();
 
   const pageState = getPageData('newNFSe') || {};
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [formErrors, setFormErrors] = useState({});
-  const [success, setSuccess] = useState(null); // New state for success messages
-  const [pageLoading, setPageLoading] = useState(true); // For initial data load
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [customers, setCustomers] = useState([]);
   const [isCustomerModalOpen, setCustomerModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(pageState.selectedCustomer || null);
   const [isTomadorRegistered, setIsTomadorRegistered] = useState(false);
-  const [isServicoRegistered, setIsServicoRegistered] = useState(false); // New state for service registration
+  const [isServicoRegistered, setIsServicoRegistered] = useState(false);
 
   const [formData, setFormData] = useState(pageState.formData || {
     idIntegracao: generateIdIntegracao(),
-    prestador: { cpfCnpj: '' }, // Initially empty
+    prestador: { cpfCnpj: '' },
     tomador: {
       cpfCnpj: '', razaoSocial: '', inscricaoMunicipal: '', email: '',
       endereco: {
@@ -48,7 +48,7 @@ const NewNFSe = () => {
     },
     servico: [
       {
-        idIntegracaoServico: '', // New field for service integration ID
+        idIntegracaoServico: '',
         codigo: '14.10', codigoTributacao: '14.10', discriminacao: '',
         cnae: '7490104', iss: { tipoTributacao: 7, exigibilidade: 1, aliquota: 3 },
         valor: { servico: 0, descontoCondicionado: 0, descontoIncondicionado: 0 },
@@ -61,9 +61,9 @@ const NewNFSe = () => {
     if (!value) return { mask: '' };
     const cleaned = value.replace(/\D/g, '');
     if (cleaned.length <= 11) {
-      return { mask: '000.000.000-00', lazy: false, unmask: true }; // CPF mask
+      return { mask: '000.000.000-00', lazy: false, unmask: true };
     }
-    return { mask: '00.000.000/0000-00', lazy: false, unmask: true }; // CNPJ mask
+    return { mask: '00.000.000/0000-00', lazy: false, unmask: true };
   });
 
   const { ref: servicoValorInputRef, maskRef: servicoValorMaskRef } = useIMask({
@@ -80,15 +80,14 @@ const NewNFSe = () => {
   const handleTomadorCpfCnpjBlur = async (e) => {
     const cpfCnpj = e.target.value;
     const cleanedCpfCnpj = cpfCnpj.replace(/\D/g, '');
-    if (cleanedCpfCnpj.length !== 11 && cleanedCpfCnpj.length !== 14) { // Validate for both CPF (11) and CNPJ (14)
+    if (cleanedCpfCnpj.length !== 11 && cleanedCpfCnpj.length !== 14) {
       setIsTomadorRegistered(false);
-      setError('CPF/CNPJ inválido. Por favor, insira um CPF ou CNPJ válido.');
+      toast.warning('CPF/CNPJ inválido. Por favor, insira um CPF ou CNPJ válido.');
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
       const tomadorDetails = await getTomadorPlugNotas(cleanedCpfCnpj);
 
       if (tomadorDetails) {
@@ -114,15 +113,14 @@ const NewNFSe = () => {
             },
           },
         }));
-        // If tomador is selected from local customers, it should override PlugNotas data
-        // or be merged carefully. For now, PlugNotas data takes precedence if found.
+        toast.info('Tomador encontrado na PlugNotas.');
       } else {
         setIsTomadorRegistered(false);
-        setError('Tomador não encontrado na PlugNotas. Por favor, preencha os dados para registro.');
+        toast.info('Tomador não encontrado na PlugNotas. Preencha os dados para registro.');
       }
     } catch (err) {
       logger.error('Error fetching tomador from PlugNotas:', err);
-      setError(err.message || 'Erro ao consultar tomador na PlugNotas.');
+      toast.error(err.message || 'Erro ao consultar tomador na PlugNotas.');
       setIsTomadorRegistered(false);
     } finally {
       setLoading(false);
@@ -138,7 +136,6 @@ const NewNFSe = () => {
 
     try {
       setLoading(true);
-      setError(null);
       const servicoDetails = await getServicoPlugNotas(idIntegracaoServico);
 
       if (servicoDetails) {
@@ -157,16 +154,16 @@ const NewNFSe = () => {
               ...prev.servico[0].valor,
               servico: servicoDetails.valor?.servico || prev.servico[0].valor.servico,
             },
-            // Map other relevant fields from servicoDetails if needed
           }],
         }));
+        toast.info('Serviço encontrado na PlugNotas.');
       } else {
         setIsServicoRegistered(false);
-        setError('Serviço não encontrado na PlugNotas. Por favor, preencha os dados para registro.');
+        toast.info('Serviço não encontrado na PlugNotas. Preencha os dados para registro.');
       }
     } catch (err) {
       logger.error('Error fetching service from PlugNotas:', err);
-      setError(err.message || 'Erro ao consultar serviço na PlugNotas.');
+      toast.error(err.message || 'Erro ao consultar serviço na PlugNotas.');
       setIsServicoRegistered(false);
     } finally {
       setLoading(false);
@@ -174,13 +171,10 @@ const NewNFSe = () => {
   };
 
 
-  // Refs to store previous state for comparison
   const prevFormDataRef = useRef();
   const prevSelectedCustomerRef = useRef();
 
-  // Save state to context whenever it changes, with deep comparison
   useEffect(() => {
-    // Only update if formData or selectedCustomer have actually changed content
     if (JSON.stringify(formData) !== JSON.stringify(prevFormDataRef.current) ||
       JSON.stringify(selectedCustomer) !== JSON.stringify(prevSelectedCustomerRef.current)) {
       setPageData('newNFSe', { formData, selectedCustomer });
@@ -189,7 +183,6 @@ const NewNFSe = () => {
     }
   }, [formData, selectedCustomer, setPageData]);
 
-  // Load initial data (company and customers)
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -200,14 +193,13 @@ const NewNFSe = () => {
         ]);
 
         if (!plugnotasCompanyData || !plugnotasCompanyData.cpf_cnpj) {
-          setError('Não foi possível carregar os dados do prestador da PlugNotas.');
+          toast.error('Não foi possível carregar os dados do prestador da PlugNotas.');
           setPageLoading(false);
           return;
         }
 
         setCustomers(customerList);
 
-        // Pre-fill prestador data from PlugNotas API
         setFormData(prev => ({
           ...prev,
           prestador: {
@@ -235,13 +227,13 @@ const NewNFSe = () => {
 
       } catch (err) {
         logger.error('Failed to load initial data:', err);
-        setError('Falha ao carregar dados. Tente novamente.');
+        toast.error('Falha ao carregar dados iniciais. Tente novamente.');
       } finally {
         setPageLoading(false);
       }
     };
     loadInitialData();
-  }, []);
+  }, [toast]);
 
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
@@ -256,16 +248,17 @@ const NewNFSe = () => {
         endereco: {
           ...prev.tomador.endereco,
           ...(customer.endereco || {}),
-          // Ensure specific fields are mapped correctly if names differ
           descricaoCidade: customer.endereco?.cidade || '',
         },
       },
     }));
+    toast.info(`Cliente ${customer.razao_social} selecionado.`);
   };
 
   const handleCustomerCreated = (newCustomer) => {
     setCustomers(prev => [...prev, newCustomer].sort((a, b) => a.razao_social.localeCompare(b.razao_social)));
     handleSelectCustomer(newCustomer);
+    toast.success('Cliente criado e selecionado com sucesso!');
   };
 
   const handleInputChange = (path, value) => {
@@ -281,7 +274,6 @@ const NewNFSe = () => {
       return current;
     });
 
-    // Clear specific error when field changes
     if (formErrors[path]) {
       setFormErrors(prev => {
         const newErrors = { ...prev };
@@ -309,20 +301,20 @@ const NewNFSe = () => {
           },
         },
       }));
+      toast.success('Endereço encontrado e preenchido!');
+    } else {
+      toast.warning('CEP não encontrado.');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
     const tomador = formData.tomador;
     const servico = formData.servico[0];
 
-    // Zod Validation
     try {
-      // Prepare data for validation ensuring numbers are numbers
       const dataToValidate = {
         ...formData,
         servico: formData.servico.map(s => ({
@@ -344,22 +336,20 @@ const NewNFSe = () => {
           newErrors[path] = error.message;
         });
         setFormErrors(newErrors);
-        setError('Por favor, corrija os erros no formulário.');
+        toast.warning('Por favor, corrija os erros no formulário.');
         setLoading(false);
         return;
       }
     }
 
     if (!isServicoRegistered && !servico.idIntegracaoServico) {
-      setError('Por favor, preencha o ID de Integração do Serviço para registrar um novo serviço.');
+      toast.warning('Por favor, preencha o ID de Integração do Serviço para registrar um novo serviço.');
       setLoading(false);
       return;
     }
 
     try {
-      // If tomador is not registered in PlugNotas, attempt to register it
       if (!isTomadorRegistered) {
-        setError(null); // Clear previous errors
         setLoading(true);
         const tomadorPayload = {
           cpfCnpj: tomador.cpfCnpj,
@@ -372,25 +362,23 @@ const NewNFSe = () => {
             estado: tomador.endereco.estado,
             logradouro: tomador.endereco.logradouro,
             numero: tomador.endereco.numero,
-            tipoLogradouro: tomador.endereco.tipoLogradouro || 'Rua', // Default if not provided
-            codigoPais: tomador.endereco.codigoPais || '1058', // Default
+            tipoLogradouro: tomador.endereco.tipoLogradouro || 'Rua',
+            codigoPais: tomador.endereco.codigoPais || '1058',
             complemento: tomador.endereco.complemento || '',
             descricaoCidade: tomador.endereco.descricaoCidade,
-            descricaoPais: tomador.endereco.descricaoPais || 'Brasil', // Default
-            tipoBairro: tomador.endereco.tipoBairro || 'Bairro', // Default
+            descricaoPais: tomador.endereco.descricaoPais || 'Brasil',
+            tipoBairro: tomador.endereco.tipoBairro || 'Bairro',
           },
           inscricaoEstadual: tomador.inscricaoEstadual || '',
           inscricaoMunicipal: tomador.inscricaoMunicipal || '',
           nomeFantasia: tomador.nomeFantasia || tomador.razaoSocial,
         };
         await registerTomadorPlugNotas(tomadorPayload);
-        setIsTomadorRegistered(true); // Mark as registered for this session
-        setSuccess('Tomador registrado com sucesso na PlugNotas! Prosseguindo com a emissão da NFS-e.');
+        setIsTomadorRegistered(true);
+        toast.success('Tomador registrado com sucesso na PlugNotas!');
       }
 
-      // If service is not registered in PlugNotas, attempt to register it
       if (!isServicoRegistered) {
-        setError(null); // Clear previous errors
         setLoading(true);
         const servicoPayload = {
           codigo: servico.codigo,
@@ -398,21 +386,17 @@ const NewNFSe = () => {
           discriminacao: servico.discriminacao,
           codigoTributacao: servico.codigoTributacao,
           cnae: servico.cnae,
-          // Add other mandatory fields for service registration if needed
-          // For simplicity, only basic fields are mapped here.
-          // Refer to the provided payload for full structure.
           iss: servico.iss,
           valor: {
             servico: parseFloat(servico.valor.servico),
-            baseCalculo: parseFloat(servico.valor.servico), // Assuming baseCalculo is same as servico for now
+            baseCalculo: parseFloat(servico.valor.servico),
           },
         };
         await registerServicoPlugNotas(servicoPayload);
-        setIsServicoRegistered(true); // Mark as registered for this session
-        setSuccess('Serviço registrado com sucesso na PlugNotas! Prosseguindo com a emissão da NFS-e.');
+        setIsServicoRegistered(true);
+        toast.success('Serviço registrado com sucesso na PlugNotas!');
       }
 
-      // Proceed with NFSe emission
       const servicoValor = parseFloat(formData.servico[0].valor.servico);
       if (isNaN(servicoValor)) {
         throw new Error('O valor do serviço não é um número válido.');
@@ -436,10 +420,12 @@ const NewNFSe = () => {
         id_integracao: formData.idIntegracao,
         status: result.message || 'Em processamento',
       }, user.id);
+
+      toast.success('NFS-e enviada com sucesso!');
       navigate('/');
     } catch (err) {
       const errorMessage = err.message || (err.erros && err.erros.join(', ')) || 'Erro desconhecido.';
-      setError(`Erro ao criar NFS-e: ${errorMessage}. Verifique se todos os campos obrigatórios estão preenchidos corretamente e se o valor do serviço é válido.`);
+      toast.error(`Erro ao criar NFS-e: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -463,9 +449,6 @@ const NewNFSe = () => {
           <h2>Nova NFS-e</h2>
           <button className="btn-secondary" onClick={() => navigate('/')}>Cancelar</button>
         </div>
-
-        {error && <div className="alert alert-error"><p>{error}</p></div>}
-        {success && <div className="alert alert-success"><p>{success}</p></div>}
 
         <form onSubmit={handleSubmit} className="nfse-form">
           <input type="hidden" value={formData.idIntegracao} readOnly />
@@ -558,10 +541,10 @@ const NewNFSe = () => {
                   type="text"
                   ref={tomadorCpfCnpjInputRef}
                   value={formData.tomador.cpfCnpj}
-                  onBlur={handleTomadorCpfCnpjBlur} // Call the new handler
+                  onBlur={handleTomadorCpfCnpjBlur}
                   onChange={() => handleInputChange('tomador.cpfCnpj', tomadorCpfCnpjMaskRef.current.unmaskedValue)}
                   required
-                  readOnly={isTomadorLocked || isTomadorRegistered} // Read-only if locked by customer selection or registered
+                  readOnly={isTomadorLocked || isTomadorRegistered}
                   className={(isTomadorLocked || isTomadorRegistered) ? 'readonly-input' : (formErrors['tomador.cpfCnpj'] ? 'input-error' : '')}
                 />
                 {formErrors['tomador.cpfCnpj'] && <span className="error-text">{formErrors['tomador.cpfCnpj']}</span>}

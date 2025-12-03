@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { handleServiceError } from '../utils/errorHandler';
+import logger from '../utils/logger';
 
 /**
  * Service para gerenciamento de produtos
@@ -14,6 +15,20 @@ import { handleServiceError } from '../utils/errorHandler';
  */
 export const getProducts = async (filters = {}) => {
     try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Usuário não autenticado');
+
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single();
+
+        if (userError || !userData) {
+            logger.error('Error fetching user data:', userError);
+            throw new Error('Erro ao buscar dados do usuário');
+        }
+
         let query = supabase
             .from('products')
             .select(`
@@ -23,6 +38,7 @@ export const getProducts = async (filters = {}) => {
         price:product_prices(*),
         stock:product_stock(*)
       `)
+            .eq('tenant_id', userData.tenant_id)
             .eq('ativo', true)
             .order('nome');
 
@@ -39,10 +55,16 @@ export const getProducts = async (filters = {}) => {
 
         const { data, error } = await query;
 
-        if (error) throw error;
-        return data;
+        if (error) {
+            logger.error('Error fetching products:', error);
+            throw error;
+        }
+
+        return data || [];
     } catch (error) {
+        logger.error('Error in getProducts:', error);
         handleServiceError(error, 'getProducts', 'Erro ao buscar produtos');
+        return []; // Retornar array vazio em caso de erro
     }
 };
 
@@ -192,6 +214,7 @@ export const createProduct = async (productData) => {
 /**
  * Cria múltiplos produtos em lote (Batch Insert)
  * Otimizado para performance com transações implícitas do Supabase
+ * Agora com suporte para impostos e verificação de duplicados
  */
 export const createProductsBatch = async (productsData, onProgress) => {
     try {
@@ -204,93 +227,195 @@ export const createProductsBatch = async (productsData, onProgress) => {
             .eq('id', user.id)
             .single();
 
-        const BATCH_SIZE = 50;
         const totalProducts = productsData.length;
-        let processedCount = 0;
         const results = {
             success: 0,
             failed: 0,
-            errors: []
+            duplicates: 0,
+            errors: [],
+            duplicateCodes: []
         };
 
-        // Processar em lotes
-        for (let i = 0; i < totalProducts; i += BATCH_SIZE) {
-            const batch = productsData.slice(i, i + BATCH_SIZE);
+        // 1. Verificar produtos duplicados (por código)
+        const productCodes = productsData.map(p => p.codigo).filter(Boolean);
+        const { data: existingProducts } = await supabase
+            .from('products')
+            .select('codigo')
+            .eq('tenant_id', userData.tenant_id)
+            .in('codigo', productCodes);
 
-            // Preparar dados para inserção
-            const productsToInsert = batch.map(p => ({
-                user_id: user.id,
-                tenant_id: userData.tenant_id,
-                codigo: p.codigo,
-                nome: p.nome,
-                ncm: p.ncm || null,
-                cest: p.cest || null,
-                unidade_medida: p.unidade || 'UN',
-                preco_venda: p.preco_venda || 0,
-                descricao: p.descricao || null,
-                ativo: true
-            }));
+        const existingCodes = new Set(existingProducts?.map(p => p.codigo) || []);
 
-            // Tentar inserir o lote
-            // Nota: Supabase insert aceita array para bulk insert
-            const { data: insertedProducts, error } = await supabase
-                .from('products')
-                .insert(productsToInsert)
-                .select();
+        // Separar produtos novos dos duplicados
+        const newProducts = productsData.filter(p => !existingCodes.has(p.codigo));
+        const duplicateProducts = productsData.filter(p => existingCodes.has(p.codigo));
 
-            if (error) {
-                // Se falhar o lote inteiro, registrar erro
-                results.failed += batch.length;
-                results.errors.push({
-                    batchIndex: i,
-                    message: error.message
-                });
+        results.duplicates = duplicateProducts.length;
+        results.duplicateCodes = duplicateProducts.map(p => p.codigo);
+
+        if (newProducts.length === 0) {
+            return results; // Todos são duplicados
+        }
+
+        // 2. Processar produtos novos em lotes
+        const BATCH_SIZE = 50;
+        let processedCount = 0;
+
+        // 2.1. Buscar ou criar categoria padrão "Importados" para produtos sem categoria
+        let defaultCategoryId = null;
+        const { data: existingCategory } = await supabase
+            .from('product_categories')
+            .select('id')
+            .eq('slug', 'importados')
+            .single();
+
+        if (existingCategory) {
+            defaultCategoryId = existingCategory.id;
+        } else {
+            // Criar categoria padrão
+            const { data: newCategory, error: categoryError } = await supabase
+                .from('product_categories')
+                .insert({
+                    name: 'Importados',
+                    slug: 'importados',
+                    description: 'Produtos importados de XML de NF-e',
+                    icon: 'Upload',
+                    active: true
+                })
+                .select('id')
+                .single();
+
+            if (!categoryError && newCategory) {
+                defaultCategoryId = newCategory.id;
             } else {
-                // Se sucesso, criar preços e estoques para os produtos inseridos
-                results.success += insertedProducts.length;
+                logger.error('Error creating default category:', categoryError);
+                throw new Error('Não foi possível criar categoria padrão para importação');
+            }
+        }
 
-                // Bulk insert de preços
-                const pricesToInsert = insertedProducts.map(p => ({
-                    product_id: p.id,
-                    preco_venda: p.preco_venda || 0, // Supabase retorna colunas extras se definidas no schema? Não, p.preco_venda não existe no retorno do insert de products se não for coluna.
-                    // Ajuste: precisamos pegar o preço do objeto original.
-                    // Como a ordem é preservada, podemos tentar mapear pelo index ou código.
-                    // Melhor abordagem: map pelo código se for único, ou assumir ordem.
-                    // Simplificação: vamos usar um valor default seguro ou refazer o map.
+        for (let i = 0; i < newProducts.length; i += BATCH_SIZE) {
+            const batch = newProducts.slice(i, i + BATCH_SIZE);
+
+            try {
+                // Preparar dados para inserção
+                const productsToInsert = batch.map(p => ({
+                    user_id: user.id,
+                    tenant_id: userData.tenant_id,
+                    category_id: p.category_id || defaultCategoryId, // Usar categoria padrão se não fornecida
+                    codigo: p.codigo,
+                    codigo_barras: p.codigo_barras || null,
+                    nome: p.nome,
+                    ncm: p.ncm || null,
+                    cest: p.cest || null,
+                    cfop: p.cfop || null,
+                    unidade_medida: p.unidade || 'UN',
+                    descricao: p.descricao || null,
+                    origem_mercadoria: p.origem_mercadoria || '0',
+                    ativo: true
                 }));
 
-                // Correção: Precisamos dos dados originais para preço e estoque.
-                // Vamos iterar sobre os produtos inseridos e parear com os dados originais.
+                // Inserir produtos
+                const { data: insertedProducts, error: productError } = await supabase
+                    .from('products')
+                    .insert(productsToInsert)
+                    .select();
+
+                if (productError) {
+                    results.failed += batch.length;
+                    results.errors.push({
+                        batchIndex: i,
+                        message: productError.message,
+                        codes: batch.map(p => p.codigo)
+                    });
+                    continue;
+                }
+
+                results.success += insertedProducts.length;
+
+                // 3. Preparar dados relacionados (preços, estoques, impostos)
                 const pricesData = [];
                 const stockData = [];
+                const taxesData = [];
 
                 insertedProducts.forEach(insertedProd => {
                     const originalProd = batch.find(p => p.codigo === insertedProd.codigo);
                     if (originalProd) {
+                        // Preços
                         pricesData.push({
                             product_id: insertedProd.id,
                             preco_venda: originalProd.preco_venda || 0,
-                            preco_custo: 0
+                            preco_custo: originalProd.preco_custo || 0
                         });
+
+                        // Estoque
                         stockData.push({
                             product_id: insertedProd.id,
-                            quantidade_atual: 0,
-                            quantidade_minima: 0
+                            quantidade_atual: originalProd.quantidade_inicial || 0,
+                            quantidade_minima: originalProd.quantidade_minima || 0
                         });
+
+                        // Impostos (se existirem)
+                        if (originalProd.impostos && originalProd.impostos.length > 0) {
+                            originalProd.impostos.forEach(tax => {
+                                taxesData.push({
+                                    product_id: insertedProd.id,
+                                    tipo_imposto: tax.tipo_imposto,
+                                    regime_tributario: tax.regime_tributario || 'simples_nacional',
+                                    aliquota: tax.aliquota,
+                                    base_calculo: tax.base_calculo || 100,
+                                    reducao_base_calculo: tax.reducao_base_calculo || 0,
+                                    cst: tax.cst || null,
+                                    modalidade_bc: tax.modalidade_bc || null,
+                                });
+                            });
+                        }
                     }
                 });
 
+                // 4. Inserir dados relacionados em lote
                 if (pricesData.length > 0) {
-                    await supabase.from('product_prices').insert(pricesData);
+                    const { error: priceError } = await supabase
+                        .from('product_prices')
+                        .insert(pricesData);
+
+                    if (priceError) {
+                        logger.error('Error inserting prices:', priceError);
+                    }
                 }
+
                 if (stockData.length > 0) {
-                    await supabase.from('product_stock').insert(stockData);
+                    const { error: stockError } = await supabase
+                        .from('product_stock')
+                        .insert(stockData);
+
+                    if (stockError) {
+                        logger.error('Error inserting stock:', stockError);
+                    }
                 }
+
+                if (taxesData.length > 0) {
+                    const { error: taxError } = await supabase
+                        .from('product_taxes')
+                        .insert(taxesData);
+
+                    if (taxError) {
+                        logger.error('Error inserting taxes:', taxError);
+                    }
+                }
+
+            } catch (batchError) {
+                logger.error('Error processing batch:', batchError);
+                results.failed += batch.length;
+                results.errors.push({
+                    batchIndex: i,
+                    message: batchError.message,
+                    codes: batch.map(p => p.codigo)
+                });
             }
 
             processedCount += batch.length;
             if (onProgress) {
-                onProgress(Math.min(processedCount, totalProducts), totalProducts);
+                onProgress(Math.min(processedCount + results.duplicates, totalProducts), totalProducts);
             }
         }
 

@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TextField, Button, Switch, FormControlLabel } from '@mui/material';
-import { Add, ArrowBack } from '@mui/icons-material';
+import { TextField, Switch, FormControlLabel } from '@mui/material';
 import { createCategory, getCategory, updateCategory } from '../services/categoryService';
+import FormModal from '../components/FormModal';
+import { useToast } from '../contexts/ToastContext';
 import './CategoryForm.css';
 
-const CategoryForm = () => {
+const CategoryForm = ({ categoryId, onClose, onSuccess }) => {
     const navigate = useNavigate();
-    const { id } = useParams();
+    const { id: paramId } = useParams();
+    const id = categoryId || paramId;
     const isEdit = Boolean(id);
+    const toast = useToast();
 
     const [category, setCategory] = useState({
         name: '',
@@ -34,12 +37,22 @@ const CategoryForm = () => {
                     });
                 } catch (e) {
                     logger.error('Erro ao buscar categoria', e);
-                    alert('Não foi possível carregar a categoria.');
+                    toast.error('Não foi possível carregar a categoria.');
+                    if (onClose) onClose();
+                    else navigate('/categorias');
                 }
             };
             fetchCategory();
+        } else {
+            setCategory({
+                name: '',
+                slug: '',
+                description: '',
+                icon: '',
+                active: true,
+            });
         }
-    }, [isEdit, id]);
+    }, [isEdit, id, navigate, toast, onClose]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -49,8 +62,13 @@ const CategoryForm = () => {
         }));
     };
 
+    const handleClose = () => {
+        if (onClose) onClose();
+        else navigate('/categorias');
+    };
+
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setLoading(true);
         try {
             const payload = {
@@ -62,24 +80,32 @@ const CategoryForm = () => {
             };
             if (isEdit) {
                 await updateCategory(id, payload);
-                alert('Categoria atualizada com sucesso!');
+                toast.success('Categoria atualizada com sucesso!');
             } else {
                 await createCategory(payload);
-                alert('Categoria criada com sucesso!');
+                toast.success('Categoria criada com sucesso!');
             }
-            navigate('/categorias');
+            if (onSuccess) onSuccess();
+            handleClose();
         } catch (error) {
             logger.error('Erro ao salvar categoria', error);
-            alert('Falha ao salvar categoria. Verifique o console.');
+            toast.error('Falha ao salvar categoria. Verifique os dados e tente novamente.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="category-form-container">
-            <h2>{isEdit ? 'Editar Categoria' : 'Cadastrar Categoria'}</h2>
-            <form onSubmit={handleSubmit} className="category-form">
+        <FormModal
+            isOpen={true}
+            onClose={handleClose}
+            title={isEdit ? 'Editar Categoria' : 'Cadastrar Categoria'}
+            onSubmit={handleSubmit}
+            loading={loading}
+            submitLabel={isEdit ? 'Atualizar' : 'Criar'}
+            cancelLabel="Cancelar"
+        >
+            <form id="category-form" onSubmit={handleSubmit}>
                 <TextField
                     label="Nome"
                     name="name"
@@ -88,6 +114,7 @@ const CategoryForm = () => {
                     required
                     fullWidth
                     margin="normal"
+                    autoFocus
                 />
                 <TextField
                     label="Slug"
@@ -96,6 +123,7 @@ const CategoryForm = () => {
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
+                    helperText="Deixe em branco para gerar automaticamente"
                 />
                 <TextField
                     label="Descrição"
@@ -108,25 +136,21 @@ const CategoryForm = () => {
                     margin="normal"
                 />
                 <TextField
-                    label="Ícone (nome da Material UI icon)"
+                    label="Ícone (Material UI)"
                     name="icon"
                     value={category.icon}
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
+                    helperText="Ex: Inventory, Category, LocalOffer"
                 />
                 <FormControlLabel
                     control={<Switch checked={category.active} onChange={handleChange} name="active" />}
                     label="Ativa"
+                    style={{ marginTop: '1rem' }}
                 />
-                <Button type="submit" variant="contained" color="primary" disabled={loading} style={{ marginTop: '1rem' }}>
-                    {isEdit ? 'Atualizar' : 'Criar'}
-                </Button>
-                <Button variant="outlined" style={{ marginTop: '1rem', marginLeft: '1rem' }} onClick={() => navigate('/categorias')}>
-                    <ArrowBack /> Cancelar
-                </Button>
             </form>
-        </div>
+        </FormModal>
     );
 };
 

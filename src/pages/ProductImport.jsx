@@ -51,24 +51,15 @@ const ProductImport = () => {
                 throw new Error('Arquivo XML inválido ou corrompido');
             }
 
-            // Extract products from NF-e XML
-            const items = xmlDoc.querySelectorAll('det');
-            const products = [];
+            // Validar se é uma NF-e válida
+            const { validateNFeXML, parseNFeXML } = await import('../utils/nfeXmlParser');
 
-            items.forEach((item) => {
-                const prod = item.querySelector('prod');
-                if (prod) {
-                    products.push({
-                        codigo: prod.querySelector('cProd')?.textContent || '',
-                        nome: prod.querySelector('xProd')?.textContent || '',
-                        ncm: prod.querySelector('NCM')?.textContent || '',
-                        cest: prod.querySelector('CEST')?.textContent || '',
-                        unidade: prod.querySelector('uCom')?.textContent || 'UN',
-                        preco_venda: parseFloat(prod.querySelector('vUnCom')?.textContent || '0'),
-                        descricao: prod.querySelector('xProd')?.textContent || '',
-                    });
-                }
-            });
+            if (!validateNFeXML(xmlDoc)) {
+                throw new Error('XML não é uma NF-e válida ou não contém produtos');
+            }
+
+            // Extrair produtos usando o parser dedicado
+            const products = parseNFeXML(xmlDoc);
 
             if (products.length === 0) {
                 throw new Error('Nenhum produto encontrado no XML');
@@ -97,9 +88,15 @@ const ProductImport = () => {
 
             if (results) {
                 let message = `Importação concluída: ${results.success} produto(s) importado(s).`;
+
+                if (results.duplicates > 0) {
+                    message += ` ${results.duplicates} produto(s) duplicado(s) ignorado(s).`;
+                }
+
                 if (results.failed > 0) {
                     message += ` ${results.failed} falha(s).`;
                 }
+
                 setSuccess(message);
 
                 if (results.success > 0) {
@@ -178,6 +175,7 @@ const ProductImport = () => {
                                     <TableCell>NCM</TableCell>
                                     <TableCell>Unidade</TableCell>
                                     <TableCell align="right">Preço</TableCell>
+                                    <TableCell align="center">Impostos</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -189,6 +187,34 @@ const ProductImport = () => {
                                         <TableCell>{product.unidade}</TableCell>
                                         <TableCell align="right">
                                             R$ {product.preco_venda.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            {product.impostos && product.impostos.length > 0 ? (
+                                                <Box
+                                                    component="span"
+                                                    sx={{
+                                                        backgroundColor: 'success.light',
+                                                        color: 'success.dark',
+                                                        px: 1,
+                                                        py: 0.5,
+                                                        borderRadius: 1,
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    {product.impostos.length} imposto(s)
+                                                </Box>
+                                            ) : (
+                                                <Box
+                                                    component="span"
+                                                    sx={{
+                                                        color: 'text.secondary',
+                                                        fontSize: '0.75rem'
+                                                    }}
+                                                >
+                                                    Nenhum
+                                                </Box>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}

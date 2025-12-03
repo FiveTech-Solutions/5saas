@@ -3,6 +3,7 @@ import logger from '../utils/logger';
 import { useAuthorization } from '../hooks/useAuthorization';
 import { ProtectedContent } from '../components/ProtectedRoute';
 import { getUsers, inviteUser, updateUserRole } from '../services/userService';
+import ContentLoader from '../components/ContentLoader';
 import './UserManagement.css';
 import '../components/ProtectedRoute.css';
 
@@ -10,7 +11,7 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('operador');
@@ -77,24 +78,21 @@ const UserManagement = () => {
 
   if (loading) {
     return (
-      <ProtectedContent 
-        allowedRoles={['admin']} 
+      <ProtectedContent
+        allowedRoles={['admin']}
         showAccessDenied={true}
         customMessage="Apenas administradores podem gerenciar usuários."
       >
         <div className="user-management-container">
-          <div className="loading">
-            <div className="loading-spinner"></div>
-            <p>Carregando usuários...</p>
-          </div>
+          <ContentLoader type="table" rows={5} />
         </div>
       </ProtectedContent>
     );
   }
 
   return (
-    <ProtectedContent 
-      allowedRoles={['admin']} 
+    <ProtectedContent
+      allowedRoles={['admin']}
       showAccessDenied={true}
       customMessage="Apenas administradores podem gerenciar usuários."
     >
@@ -169,7 +167,7 @@ const UserManagement = () => {
                     </div>
                   </td>
                   <td>
-                    <select 
+                    <select
                       value={user.role}
                       onChange={(e) => handleRoleChange(user.id, e.target.value)}
                       className={`role-select role-${user.role}`}
@@ -200,7 +198,7 @@ const UserManagement = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h2>Novo Usuário</h2>
-                <button 
+                <button
                   type="button"
                   className="modal-close"
                   onClick={() => setInviteModalOpen(false)}
@@ -222,9 +220,9 @@ const UserManagement = () => {
                 </div>
                 <div className="form-group">
                   <label htmlFor="role">Perfil de Acesso</label>
-                  <select 
-                    id="role" 
-                    value={inviteRole} 
+                  <select
+                    id="role"
+                    value={inviteRole}
                     onChange={e => setInviteRole(e.target.value)}
                     className={`role-select role-${inviteRole}`}
                   >

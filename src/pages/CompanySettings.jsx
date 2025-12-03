@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
+import { supabase } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import PageLoader from '../components/PageLoader';
 import { useIMask } from 'react-imask';
-import { getCompany } from '../services/companyService';
 import { registerCompanyWithPlugNotas, getCompanyDetailsByCnpj } from '../services/plugnotasService';
 import { getAddressFromCEP } from '../services/viaCepService';
 import { keysToCamelCase } from '../utils/helpers'; // Import the helper
@@ -234,7 +236,7 @@ const CompanySettings = () => {
     try {
       // Step 1: Removed local save to Supabase as per user request.
       // Now, this component primarily registers the company with the external provider.
-      
+
       // Parse phone into DDD and number
       const phoneString = formData.telefone.replace(/\D/g, '');
       const telefonePayload = {
@@ -254,7 +256,7 @@ const CompanySettings = () => {
       };
 
       const apiPayload = keysToCamelCase(rawApiPayload);
-      
+
       const plugNotasResponse = await registerCompanyWithPlugNotas(apiPayload);
       setSuccess(`Empresa registrada com sucesso no PlugNotas! Protocolo: ${plugNotasResponse.protocol || 'N/A'}`);
 
@@ -265,8 +267,8 @@ const CompanySettings = () => {
       setSaving(false);
     }
   };
-  
-  if (loading) return <div>Carregando...</div>;
+
+  if (loading) return <PageLoader message="Carregando configurações da empresa..." />;
 
   return (
     <div className="company-settings-container">
@@ -277,7 +279,7 @@ const CompanySettings = () => {
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
-      
+
       <div className="alert alert-warning">
         <strong>Atenção:</strong> O upload de certificado está desabilitado. Um certificado de teste está sendo usado automaticamente.
       </div>
@@ -318,7 +320,7 @@ const CompanySettings = () => {
         {/* Address */}
         <section className="form-section">
           <h3>Endereço</h3>
-           <div className="form-row">
+          <div className="form-row">
             <div className="form-group"><label>CEP</label><input type="text" value={formData.endereco.cep} onBlur={e => handleCepBlur(e.target.value)} onChange={e => handleAddressChange('cep', e.target.value)} disabled className="readonly-input" /></div>
             <div className="form-group"><label>Cidade</label><input type="text" value={formData.endereco.cidade} onChange={e => handleAddressChange('cidade', e.target.value)} disabled className="readonly-input" /></div>
             <div className="form-group"><label>UF</label><input type="text" maxLength="2" value={formData.endereco.estado} onChange={e => handleAddressChange('estado', e.target.value)} disabled className="readonly-input" /></div>

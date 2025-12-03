@@ -35,13 +35,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    let timeoutId;
+
     const initializeSession = async () => {
       setLoading(true);
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      if (currentSession?.user) {
-        await fetchAndSetSession(currentSession.user);
+
+      // Timeout de segurança: se demorar mais de 10s, força o fim do loading
+      timeoutId = setTimeout(() => {
+        logger.warn('Session initialization timeout - forcing loading to false');
+        setLoading(false);
+      }, 10000);
+
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.user) {
+          await fetchAndSetSession(currentSession.user);
+        }
+      } catch (error) {
+        logger.error('Error initializing session:', error);
+        setSession(null);
+      } finally {
+        clearTimeout(timeoutId);
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initializeSession();
@@ -49,17 +65,33 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         setLoading(true);
-        if (event === 'SIGNED_IN' && newSession?.user) {
-          await fetchAndSetSession(newSession.user);
-        } else if (event === 'SIGNED_OUT') {
-          setSession(null);
+
+        // Timeout de segurança para mudanças de estado
+        const authTimeoutId = setTimeout(() => {
+          logger.warn('Auth state change timeout - forcing loading to false');
+          setLoading(false);
+        }, 10000);
+
+        try {
+          if (event === 'SIGNED_IN' && newSession?.user) {
+            await fetchAndSetSession(newSession.user);
+          } else if (event === 'SIGNED_OUT') {
+            setSession(null);
+          }
+          // TOKEN_REFRESHED events don't require a full session refetch unless necessary
+        } catch (error) {
+          logger.error('Error in auth state change:', error);
+        } finally {
+          clearTimeout(authTimeoutId);
+          setLoading(false);
         }
-        // TOKEN_REFRESHED events don't require a full session refetch unless necessary
-        setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const logout = useCallback(async () => {
@@ -93,7 +125,34 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+          <p style={{ color: '#666', fontSize: '14px' }}>Carregando...</p>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };

@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  consultarNotasPorPeriodo,
   baixarPdfNota,
   baixarXmlNota,
   enviarNotaPorEmail,
-  cancelarNota
+  getNFSes,
+  cancelNFSe
 } from '../services/nfseService';
 import { getNFSeDetails } from '../services/plugnotasService';
 import { useAuth } from '../contexts/AuthContext';
@@ -401,7 +401,7 @@ const MinhasNFSe = () => {
       {loading && notas.length === 0 && (
         <div className="loading">
           <div className="loading-spinner"></div>
-          Carregando notas...
+          <LoadingSpinner message="Carregando notas..." />
         </div>
       )}
 

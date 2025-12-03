@@ -23,7 +23,8 @@ import {
   AccountBalance,
   Tune,
   Inventory,
-  Category
+  Category,
+  Upload
 } from '@mui/icons-material';
 
 const Sidebar = () => {
@@ -44,8 +45,8 @@ const Sidebar = () => {
         icon: <Inventory />,
         links: [
           { to: '/produtos', text: 'Listar Produtos', icon: <ListAlt /> },
-          { to: '/produtos/novo', text: 'Cadastrar Produto', icon: <AddCircle /> },
-          { to: '/produtos/importar', text: 'Importar de XML', icon: <Description /> },
+          { to: '/produtos/categorias', text: 'Categorias', icon: <Category /> },
+          { to: '/produtos/importar', text: 'Importar XML', icon: <Upload /> },
         ]
       },
       'NFS-e': {
@@ -84,13 +85,6 @@ const Sidebar = () => {
         icon: <AutoAwesome />,
         links: [
           { to: '/ai/insights', text: 'Análise Inteligente', icon: <AutoAwesome /> }
-        ]
-      },
-      'Categorias': {
-        icon: <Category />,
-        links: [
-          { to: '/categorias', text: 'Listar Categorias', icon: <ListAlt /> },
-          { to: '/categorias/novo', text: 'Cadastrar Categoria', icon: <AddCircle /> }
         ]
       },
       'Configurações': {

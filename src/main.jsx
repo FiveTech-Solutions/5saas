@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { StateProvider } from './contexts/StateContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { initSentry } from './utils/sentry';
 import './index.css';
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <AuthProvider>
         <StateProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </StateProvider>
       </AuthProvider>
     </ErrorBoundary>

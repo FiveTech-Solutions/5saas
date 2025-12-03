@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import logger from '../utils/logger';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TextField, Button, MenuItem, Select, InputLabel, FormControl, IconButton, InputAdornment } from '@mui/material';
+import { TextField, MenuItem, Select, InputLabel, FormControl, IconButton, InputAdornment } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { NumericFormat } from 'react-number-format';
 import { getProduct, createProduct, updateProduct } from '../services/productService';
 import { getCategories } from '../services/categoryService';
 import { productSchema } from '../schemas/productSchema';
 import AddCategoryModal from '../components/AddCategoryModal';
+import FormModal from '../components/FormModal';
+import { useToast } from '../contexts/ToastContext';
 import './ProductForm.css';
 
-const ProductForm = () => {
+const ProductForm = ({ productId, onClose, onSuccess }) => {
     const navigate = useNavigate();
-    const { id } = useParams();
+    const { id: paramId } = useParams();
+    const id = productId || paramId;
     const isEdit = Boolean(id);
+    const toast = useToast();
 
     const [product, setProduct] = useState({
         nome: '',
@@ -38,6 +42,7 @@ const ProductForm = () => {
             setCategories(data || []);
         } catch (e) {
             logger.error('Erro ao carregar categorias', e);
+            toast.error('Erro ao carregar categorias');
         }
     };
 
@@ -56,12 +61,23 @@ const ProductForm = () => {
                     });
                 } catch (e) {
                     logger.error('Erro ao buscar produto', e);
-                    alert('Não foi possível carregar o produto.');
+                    toast.error('Não foi possível carregar o produto.');
+                    if (onClose) onClose();
+                    else navigate('/produtos');
                 }
             };
             fetchProduct();
+        } else {
+            // Reset form when not editing (important for modal reuse)
+            setProduct({
+                nome: '',
+                codigo: '',
+                preco_venda: '',
+                unidade_medida: 'UN',
+                categoria_id: ''
+            });
         }
-    }, [isEdit, id]);
+    }, [isEdit, id, navigate, toast, onClose]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -105,10 +121,16 @@ const ProductForm = () => {
         }
     };
 
+    const handleClose = () => {
+        if (onClose) onClose();
+        else navigate('/produtos');
+    };
+
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
 
         if (!validateForm()) {
+            toast.warning('Por favor, corrija os erros no formulário.');
             return;
         }
 
@@ -123,15 +145,16 @@ const ProductForm = () => {
             };
             if (isEdit) {
                 await updateProduct(id, payload);
-                alert('Produto atualizado com sucesso!');
+                toast.success('Produto atualizado com sucesso!');
             } else {
                 await createProduct(payload);
-                alert('Produto criado com sucesso!');
+                toast.success('Produto criado com sucesso!');
             }
-            navigate('/produtos');
+            if (onSuccess) onSuccess();
+            handleClose();
         } catch (error) {
             logger.error('Erro ao salvar produto', error);
-            alert('Falha ao salvar o produto. Verifique o console para detalhes.');
+            toast.error('Falha ao salvar o produto. Verifique os dados e tente novamente.');
         } finally {
             setLoading(false);
         }
@@ -141,121 +164,116 @@ const ProductForm = () => {
         // Reload categories and select the new one
         loadCategories();
         setProduct(prev => ({ ...prev, categoria_id: newCategory.id }));
+        toast.success('Categoria adicionada com sucesso!');
     };
 
     return (
-        <div className="product-form-container">
-            <h2>{isEdit ? 'Editar Produto' : 'Cadastrar Produto'}</h2>
-            <form onSubmit={handleSubmit} className="product-form">
-                <TextField
-                    label="Nome"
-                    name="nome"
-                    value={product.nome}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                    error={!!errors.nome}
-                    helperText={errors.nome}
-                    margin="normal"
-                />
-                <TextField
-                    label="Código"
-                    name="codigo"
-                    value={product.codigo}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                    error={!!errors.codigo}
-                    helperText={errors.codigo}
-                    margin="normal"
-                />
-                <NumericFormat
-                    customInput={TextField}
-                    label="Preço de Venda"
-                    value={product.preco_venda}
-                    onValueChange={handlePriceChange}
-                    thousandSeparator="."
-                    decimalSeparator=","
-                    prefix="R$ "
-                    decimalScale={2}
-                    fixedDecimalScale
-                    allowNegative={false}
-                    required
-                    fullWidth
-                    error={!!errors.preco_venda}
-                    helperText={errors.preco_venda}
-                    margin="normal"
-                />
-                <FormControl fullWidth margin="normal">
-                    <InputLabel id="unidade-label">Unidade de Medida</InputLabel>
-                    <Select
-                        labelId="unidade-label"
-                        label="Unidade de Medida"
-                        name="unidade_medida"
-                        value={product.unidade_medida}
+        <>
+            <FormModal
+                isOpen={true}
+                onClose={handleClose}
+                title={isEdit ? 'Editar Produto' : 'Cadastrar Produto'}
+                onSubmit={handleSubmit}
+                loading={loading}
+                submitLabel={isEdit ? 'Atualizar' : 'Criar'}
+                cancelLabel="Cancelar"
+            >
+                <form id="product-form" onSubmit={handleSubmit}>
+                    <TextField
+                        label="Nome"
+                        name="nome"
+                        value={product.nome}
                         onChange={handleChange}
-                    >
-                        <MenuItem value="UN">UN</MenuItem>
-                        <MenuItem value="KG">KG</MenuItem>
-                        <MenuItem value="L">L</MenuItem>
-                        <MenuItem value="M">M</MenuItem>
-                        <MenuItem value="CX">CX</MenuItem>
-                        <MenuItem value="PC">PC</MenuItem>
-                    </Select>
-                    {errors.unidade_medida && <p style={{ color: '#d32f2f', fontSize: '0.75rem', marginLeft: '14px', marginTop: '3px' }}>{errors.unidade_medida}</p>}
-                </FormControl>
-                <FormControl fullWidth margin="normal">
-                    <InputLabel id="categoria-label">Categoria</InputLabel>
-                    <Select
-                        labelId="categoria-label"
-                        label="Categoria"
-                        name="categoria_id"
-                        value={product.categoria_id}
+                        required
+                        fullWidth
+                        error={!!errors.nome}
+                        helperText={errors.nome}
+                        margin="normal"
+                        autoFocus
+                    />
+                    <TextField
+                        label="Código"
+                        name="codigo"
+                        value={product.codigo}
                         onChange={handleChange}
-                        endAdornment={
-                            <InputAdornment position="end" sx={{ mr: 2 }}>
-                                <IconButton
-                                    edge="end"
-                                    onClick={() => setCategoryModalOpen(true)}
-                                    size="small"
-                                    color="primary"
-                                    title="Adicionar nova categoria"
-                                >
-                                    <AddIcon />
-                                </IconButton>
-                            </InputAdornment>
-                        }
-                    >
-                        <MenuItem value="">Nenhuma</MenuItem>
-                        {categories.map(cat => (
-                            <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
-                <Button
-                    type="submit"
-                    variant="contained"
-                    color="primary"
-                    disabled={loading}
-                    style={{ marginTop: '1rem' }}
-                >
-                    {isEdit ? 'Atualizar' : 'Criar'}
-                </Button>
-                <Button
-                    variant="outlined"
-                    style={{ marginTop: '1rem', marginLeft: '1rem' }}
-                    onClick={() => navigate('/produtos')}
-                >
-                    Cancelar
-                </Button>
-            </form>
+                        required
+                        fullWidth
+                        error={!!errors.codigo}
+                        helperText={errors.codigo}
+                        margin="normal"
+                    />
+                    <NumericFormat
+                        customInput={TextField}
+                        label="Preço de Venda"
+                        value={product.preco_venda}
+                        onValueChange={handlePriceChange}
+                        thousandSeparator="."
+                        decimalSeparator=","
+                        prefix="R$ "
+                        decimalScale={2}
+                        fixedDecimalScale
+                        allowNegative={false}
+                        required
+                        fullWidth
+                        error={!!errors.preco_venda}
+                        helperText={errors.preco_venda}
+                        margin="normal"
+                    />
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel id="unidade-label">Unidade de Medida</InputLabel>
+                        <Select
+                            labelId="unidade-label"
+                            label="Unidade de Medida"
+                            name="unidade_medida"
+                            value={product.unidade_medida}
+                            onChange={handleChange}
+                        >
+                            <MenuItem value="UN">UN</MenuItem>
+                            <MenuItem value="KG">KG</MenuItem>
+                            <MenuItem value="L">L</MenuItem>
+                            <MenuItem value="M">M</MenuItem>
+                            <MenuItem value="CX">CX</MenuItem>
+                            <MenuItem value="PC">PC</MenuItem>
+                        </Select>
+                        {errors.unidade_medida && <p style={{ color: '#d32f2f', fontSize: '0.75rem', marginLeft: '14px', marginTop: '3px' }}>{errors.unidade_medida}</p>}
+                    </FormControl>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel id="categoria-label">Categoria</InputLabel>
+                        <Select
+                            labelId="categoria-label"
+                            label="Categoria"
+                            name="categoria_id"
+                            value={product.categoria_id}
+                            onChange={handleChange}
+                            endAdornment={
+                                <InputAdornment position="end" sx={{ mr: 2 }}>
+                                    <IconButton
+                                        edge="end"
+                                        onClick={() => setCategoryModalOpen(true)}
+                                        size="small"
+                                        color="primary"
+                                        title="Adicionar nova categoria"
+                                    >
+                                        <AddIcon />
+                                    </IconButton>
+                                </InputAdornment>
+                            }
+                        >
+                            <MenuItem value="">Nenhuma</MenuItem>
+                            {categories.map(cat => (
+                                <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </form>
+            </FormModal>
 
             <AddCategoryModal
                 open={categoryModalOpen}
                 onClose={() => setCategoryModalOpen(false)}
                 onCategoryCreated={handleCategoryCreated}
             />
-        </div>
+        </>
     );
 };
 

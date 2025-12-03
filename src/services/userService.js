@@ -9,9 +9,14 @@ import logger from '../utils/logger';
  * @returns {Promise<Object|null>} An object containing user, tenant, and subscription data, or null if not found.
  */
 export const getUserSessionData = async (userId) => {
-  if (!userId) return null;
+  if (!userId) {
+    logger.warn('getUserSessionData called without userId');
+    return null;
+  }
 
   try {
+    logger.info(`Fetching session data for user: ${userId}`);
+
     // This query fetches the user's profile and, through a series of joins,
     // also retrieves their associated tenant and their tenant's active subscription,
     // including the list of features included in the subscription's plan.
@@ -38,7 +43,14 @@ export const getUserSessionData = async (userId) => {
       throw error;
     }
 
-    if (!user) return null;
+    if (!user) {
+      logger.warn('User not found in database');
+      return null;
+    }
+
+    if (!user.tenant) {
+      logger.warn('User has no associated tenant');
+    }
 
     // Handle subscription - it can be either an array or a single object
     let activeSubscription = null;
@@ -47,13 +59,17 @@ export const getUserSessionData = async (userId) => {
       if (Array.isArray(user.tenant.subscription)) {
         // If it's an array, find the active one
         activeSubscription = user.tenant.subscription.find(sub => sub.status === 'active' || sub.status === 'trialing');
+        logger.info(`Found ${user.tenant.subscription.length} subscriptions, active: ${!!activeSubscription}`);
       } else {
         // If it's a single object, use it directly if it's active
         const sub = user.tenant.subscription;
         if (sub.status === 'active' || sub.status === 'trialing') {
           activeSubscription = sub;
         }
+        logger.info(`Single subscription with status: ${sub.status}`);
       }
+    } else {
+      logger.warn('No subscription found for tenant');
     }
 
     // Structure the data for easy use in the AuthContext.
@@ -64,10 +80,10 @@ export const getUserSessionData = async (userId) => {
         email: user.email, // Note: email is from auth.users, might need to be passed separately
         role: user.role,
       },
-      tenant: {
+      tenant: user.tenant ? {
         id: user.tenant.id,
         name: user.tenant.name,
-      },
+      } : null,
       subscription: activeSubscription ? {
         status: activeSubscription.status,
         planName: activeSubscription.plan.name,
@@ -75,6 +91,7 @@ export const getUserSessionData = async (userId) => {
       } : null,
     };
 
+    logger.info('Session data fetched successfully');
     return sessionData;
 
   } catch (error) {

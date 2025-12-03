@@ -3,14 +3,22 @@ import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { getProducts, deleteProduct } from '../services/productService';
 import { Add, Edit, Delete, Search, FilterList } from '@mui/icons-material';
+import ContentLoader from '../components/ContentLoader';
+import ProductForm from './ProductForm';
+import { useToast } from '../contexts/ToastContext';
 import './ProductList.css';
 
 const ProductList = () => {
     const navigate = useNavigate();
+    const toast = useToast();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
+
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProductId, setEditingProductId] = useState(null);
 
     useEffect(() => {
         loadProducts();
@@ -23,10 +31,11 @@ const ProductList = () => {
             if (categoryFilter) filters.category_id = categoryFilter;
 
             const data = await getProducts(filters);
-            setProducts(data);
+            setProducts(data || []);
         } catch (error) {
             logger.error('Error loading products:', error);
-            alert('Erro ao carregar produtos');
+            setProducts([]);
+            toast.error('Erro ao carregar produtos: ' + (error.message || 'Erro desconhecido'));
         } finally {
             setLoading(false);
         }
@@ -37,12 +46,27 @@ const ProductList = () => {
 
         try {
             await deleteProduct(id);
-            alert('Produto excluído com sucesso!');
+            toast.success('Produto excluído com sucesso!');
             loadProducts();
         } catch (error) {
             logger.error('Error deleting product:', error);
-            alert('Erro ao excluir produto');
+            toast.error('Erro ao excluir produto');
         }
+    };
+
+    const handleOpenModal = (productId = null) => {
+        setEditingProductId(productId);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingProductId(null);
+    };
+
+    const handleFormSuccess = () => {
+        loadProducts();
+        handleCloseModal();
     };
 
     const filteredProducts = products.filter(product =>
@@ -63,7 +87,7 @@ const ProductList = () => {
                 <h1>Produtos</h1>
                 <button
                     className="btn btn-primary"
-                    onClick={() => navigate('/produtos/new')}
+                    onClick={() => handleOpenModal()}
                 >
                     <Add /> Novo Produto
                 </button>
@@ -85,7 +109,7 @@ const ProductList = () => {
             </div>
 
             {loading ? (
-                <div className="loading">Carregando produtos...</div>
+                <ContentLoader type="table" rows={8} />
             ) : (
                 <div className="products-grid">
                     {filteredProducts.length === 0 ? (
@@ -93,7 +117,7 @@ const ProductList = () => {
                             <p>Nenhum produto encontrado</p>
                             <button
                                 className="btn btn-primary"
-                                onClick={() => navigate('/produtos/new')}
+                                onClick={() => handleOpenModal()}
                             >
                                 Cadastrar Primeiro Produto
                             </button>
@@ -134,8 +158,8 @@ const ProductList = () => {
                                         </td>
                                         <td>
                                             <span className={`stock-badge ${product.stock?.[0]?.quantidade_atual <= product.stock?.[0]?.quantidade_minima
-                                                    ? 'low-stock'
-                                                    : 'in-stock'
+                                                ? 'low-stock'
+                                                : 'in-stock'
                                                 }`}>
                                                 {product.stock?.[0]?.quantidade_atual || 0} {product.unidade_medida}
                                             </span>
@@ -143,7 +167,7 @@ const ProductList = () => {
                                         <td className="actions-cell">
                                             <button
                                                 className="btn-icon"
-                                                onClick={() => navigate(`/produtos/edit/${product.id}`)}
+                                                onClick={() => handleOpenModal(product.id)}
                                                 title="Editar"
                                             >
                                                 <Edit />
@@ -162,6 +186,14 @@ const ProductList = () => {
                         </table>
                     )}
                 </div>
+            )}
+
+            {isModalOpen && (
+                <ProductForm
+                    productId={editingProductId}
+                    onClose={handleCloseModal}
+                    onSuccess={handleFormSuccess}
+                />
             )}
         </div>
     );
