@@ -181,7 +181,9 @@ const extractProductData = (prodNode) => {
         cest: prodNode.querySelector('CEST')?.textContent || '',
         cfop: prodNode.querySelector('CFOP')?.textContent || '',
         unidade: prodNode.querySelector('uCom')?.textContent || 'UN',
-        preco_venda: parseFloat(prodNode.querySelector('vUnCom')?.textContent || '0'),
+        preco_custo: parseFloat(prodNode.querySelector('vUnCom')?.textContent || '0'),
+        preco_venda: 0, // Inicializa como 0 para ser definido pelo usuário
+        margem_lucro: 0, // Inicializa como 0
         descricao: prodNode.querySelector('xProd')?.textContent || '',
         codigo_barras: prodNode.querySelector('cEAN')?.textContent || null,
     };

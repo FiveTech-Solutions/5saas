@@ -24,7 +24,11 @@ const ProductForm = ({ productId, onClose, onSuccess }) => {
         codigo: '',
         preco_venda: '',
         unidade_medida: 'UN',
-        categoria_id: ''
+        categoria_id: '',
+        ncm: '',
+        cest: '',
+        cfop: '',
+        origem_mercadoria: '0'
     });
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -57,7 +61,11 @@ const ProductForm = ({ productId, onClose, onSuccess }) => {
                         codigo: data.codigo || '',
                         preco_venda: data.price?.[0]?.preco_venda || '',
                         unidade_medida: data.unidade_medida || 'UN',
-                        categoria_id: data.category?.id || ''
+                        categoria_id: data.category?.id || '',
+                        ncm: data.ncm || '',
+                        cest: data.cest || '',
+                        cfop: data.cfop || '',
+                        origem_mercadoria: data.origem_mercadoria || '0'
                     });
                 } catch (e) {
                     logger.error('Erro ao buscar produto', e);
@@ -74,7 +82,11 @@ const ProductForm = ({ productId, onClose, onSuccess }) => {
                 codigo: '',
                 preco_venda: '',
                 unidade_medida: 'UN',
-                categoria_id: ''
+                categoria_id: '',
+                ncm: '',
+                cest: '',
+                cfop: '',
+                origem_mercadoria: '0'
             });
         }
     }, [isEdit, id, navigate, toast, onClose]);
@@ -101,7 +113,10 @@ const ProductForm = ({ productId, onClose, onSuccess }) => {
                 ...product,
                 preco_venda: Number(product.preco_venda),
                 category_id: product.categoria_id || '',
-                origem_mercadoria: '',
+                origem_mercadoria: product.origem_mercadoria || '',
+                ncm: product.ncm || '',
+                cest: product.cest || '',
+                cfop: product.cfop || ''
             };
 
             productSchema.parse(dataToValidate);
@@ -141,7 +156,11 @@ const ProductForm = ({ productId, onClose, onSuccess }) => {
                 codigo: product.codigo,
                 preco_venda: Number(product.preco_venda),
                 unidade_medida: product.unidade_medida,
-                category_id: product.categoria_id || null
+                category_id: product.categoria_id || null,
+                ncm: product.ncm || null,
+                cest: product.cest || null,
+                cfop: product.cfop || null,
+                origem_mercadoria: product.origem_mercadoria || '0'
             };
             if (isEdit) {
                 await updateProduct(id, payload);
@@ -168,40 +187,51 @@ const ProductForm = ({ productId, onClose, onSuccess }) => {
     };
 
     return (
-        <>
-            <FormModal
-                isOpen={true}
-                onClose={handleClose}
-                title={isEdit ? 'Editar Produto' : 'Cadastrar Produto'}
-                onSubmit={handleSubmit}
-                loading={loading}
-                submitLabel={isEdit ? 'Atualizar' : 'Criar'}
-                cancelLabel="Cancelar"
-            >
-                <form id="product-form" onSubmit={handleSubmit}>
-                    <TextField
-                        label="Nome"
-                        name="nome"
-                        value={product.nome}
-                        onChange={handleChange}
-                        required
-                        fullWidth
-                        error={!!errors.nome}
-                        helperText={errors.nome}
-                        margin="normal"
-                        autoFocus
-                    />
+        <FormModal
+            isOpen={true}
+            onClose={handleClose}
+            title={isEdit ? 'Editar Produto' : 'Novo Produto'}
+            loading={loading}
+            actions={
+                <>
+                    <button type="button" className="btn-secondary" onClick={handleClose} disabled={loading}>
+                        Cancelar
+                    </button>
+                    <button type="submit" className="btn-primary" onClick={handleSubmit} disabled={loading}>
+                        {loading ? 'Salvando...' : 'Salvar'}
+                    </button>
+                </>
+            }
+        >
+            <form className="product-form" onSubmit={handleSubmit}>
+                <div className="form-grid">
+                    <div className="form-full-width">
+                        <TextField
+                            label="Nome do Produto"
+                            name="nome"
+                            value={product.nome}
+                            onChange={handleChange}
+                            error={!!errors.nome}
+                            helperText={errors.nome}
+                            fullWidth
+                            variant="outlined"
+                            required
+                            autoFocus
+                        />
+                    </div>
+
                     <TextField
                         label="Código"
                         name="codigo"
                         value={product.codigo}
                         onChange={handleChange}
-                        required
-                        fullWidth
                         error={!!errors.codigo}
                         helperText={errors.codigo}
-                        margin="normal"
+                        fullWidth
+                        variant="outlined"
+                        required
                     />
+
                     <NumericFormat
                         customInput={TextField}
                         label="Preço de Venda"
@@ -212,68 +242,126 @@ const ProductForm = ({ productId, onClose, onSuccess }) => {
                         prefix="R$ "
                         decimalScale={2}
                         fixedDecimalScale
-                        allowNegative={false}
-                        required
-                        fullWidth
                         error={!!errors.preco_venda}
                         helperText={errors.preco_venda}
-                        margin="normal"
+                        fullWidth
+                        variant="outlined"
+                        required
                     />
-                    <FormControl fullWidth margin="normal">
-                        <InputLabel id="unidade-label">Unidade de Medida</InputLabel>
+
+                    <FormControl fullWidth variant="outlined" error={!!errors.unidade_medida} required>
+                        <InputLabel>Unidade</InputLabel>
                         <Select
-                            labelId="unidade-label"
-                            label="Unidade de Medida"
                             name="unidade_medida"
                             value={product.unidade_medida}
                             onChange={handleChange}
+                            label="Unidade"
                         >
-                            <MenuItem value="UN">UN</MenuItem>
-                            <MenuItem value="KG">KG</MenuItem>
-                            <MenuItem value="L">L</MenuItem>
-                            <MenuItem value="M">M</MenuItem>
-                            <MenuItem value="CX">CX</MenuItem>
-                            <MenuItem value="PC">PC</MenuItem>
+                            <MenuItem value="UN">Unidade (UN)</MenuItem>
+                            <MenuItem value="KG">Quilograma (KG)</MenuItem>
+                            <MenuItem value="L">Litro (L)</MenuItem>
+                            <MenuItem value="M">Metro (M)</MenuItem>
+                            <MenuItem value="CX">Caixa (CX)</MenuItem>
                         </Select>
-                        {errors.unidade_medida && <p style={{ color: '#d32f2f', fontSize: '0.75rem', marginLeft: '14px', marginTop: '3px' }}>{errors.unidade_medida}</p>}
+                        {errors.unidade_medida && <span className="error-text">{errors.unidade_medida}</span>}
                     </FormControl>
-                    <FormControl fullWidth margin="normal">
-                        <InputLabel id="categoria-label">Categoria</InputLabel>
-                        <Select
-                            labelId="categoria-label"
-                            label="Categoria"
-                            name="categoria_id"
-                            value={product.categoria_id}
-                            onChange={handleChange}
-                            endAdornment={
-                                <InputAdornment position="end" sx={{ mr: 2 }}>
-                                    <IconButton
-                                        edge="end"
-                                        onClick={() => setCategoryModalOpen(true)}
-                                        size="small"
-                                        color="primary"
-                                        title="Adicionar nova categoria"
-                                    >
-                                        <AddIcon />
-                                    </IconButton>
-                                </InputAdornment>
-                            }
+
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', gridColumn: 'span 2' }}>
+                        <FormControl fullWidth variant="outlined" error={!!errors.categoria_id}>
+                            <InputLabel>Categoria</InputLabel>
+                            <Select
+                                name="categoria_id"
+                                value={product.categoria_id}
+                                onChange={handleChange}
+                                label="Categoria"
+                            >
+                                <MenuItem value="">
+                                    <em>Selecione...</em>
+                                </MenuItem>
+                                {categories.map(cat => (
+                                    <MenuItem key={cat.id} value={cat.id}>
+                                        {cat.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                            {errors.categoria_id && <span className="error-text">{errors.categoria_id}</span>}
+                        </FormControl>
+                        <IconButton
+                            color="primary"
+                            onClick={() => setCategoryModalOpen(true)}
+                            title="Nova Categoria"
+                            style={{ marginTop: '4px' }}
                         >
-                            <MenuItem value="">Nenhuma</MenuItem>
-                            {categories.map(cat => (
-                                <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </form>
-            </FormModal>
+                            <AddIcon />
+                        </IconButton>
+                    </div>
+                </div>
+
+                <div className="form-section-divider">
+                    <h3>Informações Fiscais (Opcional)</h3>
+                </div>
+
+                <div className="form-grid">
+                    <TextField
+                        label="NCM"
+                        name="ncm"
+                        value={product.ncm}
+                        onChange={handleChange}
+                        error={!!errors.ncm}
+                        helperText={errors.ncm || "Ex: 12345678"}
+                        fullWidth
+                        variant="outlined"
+                        inputProps={{ maxLength: 8 }}
+                    />
+
+                    <TextField
+                        label="CEST"
+                        name="cest"
+                        value={product.cest}
+                        onChange={handleChange}
+                        error={!!errors.cest}
+                        helperText={errors.cest}
+                        fullWidth
+                        variant="outlined"
+                        inputProps={{ maxLength: 7 }}
+                    />
+
+                    <TextField
+                        label="CFOP"
+                        name="cfop"
+                        value={product.cfop}
+                        onChange={handleChange}
+                        error={!!errors.cfop}
+                        helperText={errors.cfop || "Ex: 5102"}
+                        fullWidth
+                        variant="outlined"
+                        inputProps={{ maxLength: 4 }}
+                    />
+
+                    <div className="form-full-width">
+                        <FormControl fullWidth variant="outlined">
+                            <InputLabel>Origem da Mercadoria</InputLabel>
+                            <Select
+                                name="origem_mercadoria"
+                                value={product.origem_mercadoria}
+                                onChange={handleChange}
+                                label="Origem da Mercadoria"
+                            >
+                                <MenuItem value="0">0 - Nacional</MenuItem>
+                                <MenuItem value="1">1 - Estrangeira (Importação direta)</MenuItem>
+                                <MenuItem value="2">2 - Estrangeira (Adquirida no mercado interno)</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </div>
+                </div>
+            </form>
 
             <AddCategoryModal
-                open={categoryModalOpen}
+                isOpen={categoryModalOpen}
                 onClose={() => setCategoryModalOpen(false)}
                 onCategoryCreated={handleCategoryCreated}
             />
-        </>
+        </FormModal>
     );
 };
 

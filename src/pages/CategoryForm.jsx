@@ -105,17 +105,18 @@ const CategoryForm = ({ categoryId, onClose, onSuccess }) => {
             submitLabel={isEdit ? 'Atualizar' : 'Criar'}
             cancelLabel="Cancelar"
         >
-            <form id="category-form" onSubmit={handleSubmit}>
-                <TextField
-                    label="Nome"
-                    name="name"
-                    value={category.name}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                    margin="normal"
-                    autoFocus
-                />
+            <form className="category-form" onSubmit={handleSubmit}>
+                <div className="form-group">
+                    <TextField
+                        label="Nome da Categoria"
+                        name="name"
+                        value={category.name}
+                        onChange={handleChange}
+                        required
+                        fullWidth
+                        autoFocus
+                    />
+                </div>
                 <TextField
                     label="Slug"
                     name="slug"
